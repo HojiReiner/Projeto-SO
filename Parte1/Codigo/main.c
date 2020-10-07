@@ -14,6 +14,14 @@ char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
 
+//^Input Variables
+FILE *InputFile;
+FILE *OutputFile;
+char *InputFile_Name;
+char *OutputFile_Name;
+char *SyncStrat;
+
+
 int insertCommand(char* data) {
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[numberCommands++], data);
@@ -35,6 +43,7 @@ void errorParse(){
     exit(EXIT_FAILURE);
 }
 
+//!FIXME Abrir ficheriro
 void processInput(){
     char line[MAX_INPUT_SIZE];
 
@@ -81,25 +90,32 @@ void processInput(){
     }
 }
 
-void applyCommands(){
-    while (numberCommands > 0){
+//!FIXME Multithreading
+void applyCommands()
+{
+    while (numberCommands > 0)
+    {
         const char* command = removeCommand();
-        if (command == NULL){
+        if (command == NULL)
+        {
             continue;
         }
 
         char token, type;
         char name[MAX_INPUT_SIZE];
         int numTokens = sscanf(command, "%c %s %c", &token, name, &type);
-        if (numTokens < 2) {
+        if (numTokens < 2)
+        {
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
 
         int searchResult;
-        switch (token) {
+        switch (token)
+        {
             case 'c':
-                switch (type) {
+                switch (type)
+                {
                     case 'f':
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
@@ -132,7 +148,22 @@ void applyCommands(){
     }
 }
 
-int main(int argc, char* argv[]) {
+//!FIXME Tratar dos argumentos
+int main(int argc, char* argv[])
+{   
+    //TODO 
+    if(argc != 5)
+    {
+        fprintf(stderr, "Error: wrong number of arguments\n");
+        exit(EXIT_FAILURE);
+    }
+
+    InputFile_Name = argv[1];
+    OutputFile_Name = argv[2];
+    numberThreads =  atoi(argv[3]);
+    SyncStrat = argv[4];
+    //TODO
+
     /* init filesystem */
     init_fs();
 
