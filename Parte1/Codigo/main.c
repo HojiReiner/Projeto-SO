@@ -46,7 +46,7 @@ void errorParse(){
 //!FIXME Abrir ficheriro
 void processInput(){
     char line[MAX_INPUT_SIZE];
-
+    //*fopen(inputfile)
     /* break loop with ^Z or ^D */
     while (fgets(line, sizeof(line)/sizeof(char), stdin)) {
         char token, type;
@@ -92,7 +92,8 @@ void processInput(){
 
 //!FIXME Multithreading
 void applyCommands()
-{
+{   
+    //? Iniciar pool de tarefas
     while (numberCommands > 0)
     {
         const char* command = removeCommand();
@@ -118,6 +119,7 @@ void applyCommands()
                 {
                     case 'f':
                         printf("Create file: %s\n", name);
+                        //? pthread_create()
                         create(name, T_FILE);
                         break;
                     case 'd':
@@ -170,7 +172,10 @@ int main(int argc, char* argv[])
     /* process input and print tree */
     processInput();
     applyCommands();
+
+    //*fopen(output)
     print_tecnicofs_tree(stdout);
+    //*fclose(output)
 
     /* release allocated memory */
     destroy_fs();
