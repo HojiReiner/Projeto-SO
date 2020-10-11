@@ -22,6 +22,14 @@ char *OutputFile_Name;
 char *SyncStrat;
 
 
+/*
+pool(){
+    poolinit;
+    while (numberCommands > 0)
+    thread_create(applyCommands)
+}
+*/
+
 int insertCommand(char* data) {
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[numberCommands++], data);
@@ -93,7 +101,7 @@ void processInput(){
 //!FIXME Multithreading
 void applyCommands()
 {   
-    //? Iniciar pool de tarefas
+    //!Remover o while;
     while (numberCommands > 0)
     {
         const char* command = removeCommand();
@@ -101,6 +109,7 @@ void applyCommands()
         {
             continue;
         }
+
 
         char token, type;
         char name[MAX_INPUT_SIZE];
@@ -119,7 +128,6 @@ void applyCommands()
                 {
                     case 'f':
                         printf("Create file: %s\n", name);
-                        //? pthread_create()
                         create(name, T_FILE);
                         break;
                     case 'd':
