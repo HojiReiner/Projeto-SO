@@ -3,7 +3,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
-#include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
 #include "fs/operations.h"
 
@@ -23,8 +23,8 @@ char *InputFile_Name;
 char *OutputFile_Name;
 char *SyncStrat;
 
-time_t start_t, end_t;
-double diff_t;
+struct timeval start, end;
+double exectime;
 
 /*
 *Possible code for pool
@@ -192,7 +192,7 @@ void applyCommands()
 void pool(){
     //pthread_t tid [numberThreads];
     //* Start timer
-    time(&start_t);
+    gettimeofday(&start, NULL);
     applyCommands();
 }
 
@@ -228,9 +228,9 @@ int main(int argc, char* argv[])
     destroy_fs();
     
     // * End timer
-    time(&end_t);
-    diff_t = difftime(end_t, start_t);
-    printf("TecnicoFS completed in [%0.4f] seconds. \n", diff_t);
+    gettimeofday(&end, NULL);
+    exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
+    printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
 
     exit(EXIT_SUCCESS);
 }
