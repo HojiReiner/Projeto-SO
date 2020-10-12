@@ -110,6 +110,7 @@ int inode_get(int inumber, type *nType, union Data *data) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
 
+    //!Critical
     if ((inumber < 0) || (inumber > INODE_TABLE_SIZE) || (inode_table[inumber].nodeType == T_NONE)) {
         printf("inode_get: invalid inumber %d\n", inumber);
         return FAIL;

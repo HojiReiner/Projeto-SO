@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
+#include <pthread.h>
 #include "fs/operations.h"
 
 #define MAX_COMMANDS 150000
@@ -21,15 +23,39 @@ char *InputFile_Name;
 char *OutputFile_Name;
 char *SyncStrat;
 
+time_t start_t, end_t;
+double diff_t;
 
 /*
-pool(){
-    poolinit;
-    while (numberCommands > 0)
-    thread_create(applyCommands)
-}
+*Possible code for pool
+*(Possible code 1)
+*   while(numberCommands > 0){
+*       for(i=0; i<numberThreads; i++){ 
+*           pthread_create (&tid[i], NULL, applyComand, NULL);
+*       }
+*       
+*       for(i=0; i<numberThreads; i++){
+*           pthread_join(tid[i])
+*       }
+*   }
+
+
+*(Possible code 2)
+*   for(i=0; i<numberThreads; i++){
+*           removeCommand();
+*           pthread_create (&tid[i], NULL, applyComand, NULL);
+*       }
+*   for(i=0; i<numberThreads && numberCommand >0; i++)
+*       pthread_join(tid[i]);
+*       pthread_create (&tid[i], NULL, applyComand, NULL);
+*       if((i + 1) == numberThreads){
+*           i = 0;
+*       }
+*   }
 */
 
+
+//^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[numberCommands++], data);
@@ -38,6 +64,7 @@ int insertCommand(char* data) {
     return 0;
 }
 
+//^ Removes command from vector inputCommands
 char* removeCommand() {
     if(numberCommands > 0){
         numberCommands--;
@@ -51,18 +78,22 @@ void errorParse(){
     exit(EXIT_FAILURE);
 }
 
-//!FIXME Abrir ficheriro
 void processInput(){
     char line[MAX_INPUT_SIZE];
-    //*fopen(inputfile)
-    /* break loop with ^Z or ^D */
-    while (fgets(line, sizeof(line)/sizeof(char), stdin)) {
+    //* Open file
+    if((InputFile = fopen(InputFile_Name, "r")) == NULL){
+        fprintf(stderr, "Error: file %s doesn't exist\n",InputFile_Name);
+        exit(EXIT_FAILURE);
+    };
+
+    //* Read file and copy
+    while (fgets(line, sizeof(line)/sizeof(char), InputFile)) {
         char token, type;
         char name[MAX_INPUT_SIZE];
 
         int numTokens = sscanf(line, "%c %s %c", &token, name, &type);
 
-        /* perform minimal validation */
+        //* Perform minimal validation
         if (numTokens < 1) {
             continue;
         }
@@ -96,9 +127,9 @@ void processInput(){
             }
         }
     }
+    fclose(InputFile);
 }
 
-//!FIXME Multithreading
 void applyCommands()
 {   
     //!Remover o while;
@@ -156,13 +187,18 @@ void applyCommands()
             }
         }
     }
+    //!pthread_exit(EXIT_SUCCESS);
+}
+void pool(){
+    //pthread_t tid [numberThreads];
+    //* Start timer
+    time(&start_t);
+    applyCommands();
 }
 
-//!FIXME Tratar dos argumentos
 int main(int argc, char* argv[])
 {   
-    //TODO 
-    if(argc != 5)
+    if(argc != 3)
     {
         fprintf(stderr, "Error: wrong number of arguments\n");
         exit(EXIT_FAILURE);
@@ -170,22 +206,31 @@ int main(int argc, char* argv[])
 
     InputFile_Name = argv[1];
     OutputFile_Name = argv[2];
-    numberThreads =  atoi(argv[3]);
-    SyncStrat = argv[4];
-    //TODO
+    //!numberThreads =  atoi(argv[3]);
+    //!SyncStrat = argv[4];
 
     /* init filesystem */
     init_fs();
 
     /* process input and print tree */
     processInput();
-    applyCommands();
 
-    //*fopen(output)
-    print_tecnicofs_tree(stdout);
-    //*fclose(output)
+    //! Not final name ?
+    pool();
+
+    //* Open/Create output file
+    OutputFile = fopen(OutputFile_Name, "w");
+    print_tecnicofs_tree(OutputFile);
+    //* Closes file
+    fclose(OutputFile);
 
     /* release allocated memory */
     destroy_fs();
+    
+    // * End timer
+    time(&end_t);
+    diff_t = difftime(end_t, start_t);
+    printf("TecnicoFS completed in [%0.4f] seconds. \n", diff_t);
+
     exit(EXIT_SUCCESS);
 }
