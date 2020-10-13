@@ -10,7 +10,7 @@ inode_t inode_table[INODE_TABLE_SIZE];
 
 /*sync variables*/
 int syncStrat;
-void *sync_lock;
+void *state_lock;
 
 /*Initiates the sync method inserted in the input*/
 void Strat_Init(char *strat){
@@ -43,7 +43,7 @@ void *Lock_Init(){
     return NULL;
 }
 
-void Destroy_Lock(void* lock){
+void Destroy_Lock(void* lock)
     free(lock);
 }
 
@@ -89,7 +89,7 @@ void insert_delay(int cycles) {
  */
 void inode_table_init(char *syncStrat) {
     Strat_Init(syncStrat);
-    sync_lock = Lock_Init();
+    state_lock = Lock_Init();
 
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         inode_table[i].nodeType = T_NONE;
@@ -103,6 +103,7 @@ void inode_table_init(char *syncStrat) {
  */
 
 void inode_table_destroy() {
+    Destroy_Lock(state_lock);
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         if (inode_table[i].nodeType != T_NONE) {
             /* as data is an union, the same pointer is used for both dirEntries and fileContents */
@@ -111,7 +112,6 @@ void inode_table_destroy() {
             free(inode_table[i].data.dirEntries);
         }
     }
-    Destroy_Lock(sync_lock);
 }
 
 /*

@@ -26,7 +26,7 @@ char *syncStrat;
 struct timeval start, end;
 double exectime;
 
-void * sync_lock;
+void *main_lock = NULL;
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -39,13 +39,13 @@ int insertCommand(char* data) {
 
 //^ Removes command from vector inputCommands
 char* removeCommand() {
-    Lock(sync_lock, WRITE);
+    Lock(main_lock, WRITE);
     if(numberCommands > 0){
         numberCommands--;
-        Unlock(sync_lock);
+        Unlock(main_lock);
         return inputCommands[headQueue++];
     }
-    Unlock(sync_lock);
+    Unlock(main_lock);
     return NULL;
 }
 
@@ -153,27 +153,25 @@ void *applyCommands(){
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);
-            } pthread_exit(EXIT_SUCCESS);
+            }
         }
     }
     return NULL;
 }
 
 void threadPool(){
-    pthread_t tid [numberThreads];
+    pthread_t tid[numberThreads];
     int i;
 
     //* Start timer
     gettimeofday(&start, NULL);
 
     for(i=0; i<numberThreads; i++){ 
-        if(pthread_create (&tid[i], NULL, applyCommands(), NULL) != 0){
+        if(pthread_create (&tid[i], NULL, applyCommands, NULL) != 0){
             fprintf(stderr, "Error: problems creating thread\n");
             exit(EXIT_FAILURE);
         }
     }
-    
-    printf("BEEP\n");
 
     for(i=0 ; i < numberThreads ; i++){
         if(pthread_join (tid[i], NULL) != 0){
@@ -195,7 +193,6 @@ int main(int argc, char* argv[]){
     numberThreads =  atoi(argv[3]);
     syncStrat = argv[4];
 
-    printf("NT = %d\n", numberThreads);
     if(numberThreads == 1 && strcmp(syncStrat,"nosync") != 0){
         fprintf(stderr, "Error: can only use nosync with 1 thread\n");
         exit(EXIT_FAILURE);
@@ -203,7 +200,7 @@ int main(int argc, char* argv[]){
 
     /* init filesystem */
     init_fs(syncStrat);
-    sync_lock = Lock_Init();
+    main_lock = Lock_Init();
 
     /* process input and print tree */
     processInput();
@@ -217,9 +214,10 @@ int main(int argc, char* argv[]){
     fclose(OutputFile);
 
     /* release allocated memory */
-    Destroy_Lock(sync_lock);
-    destroy_fs();
     
+    destroy_fs();
+    Destroy_Lock(main_lock);
+
     // * End timer
     gettimeofday(&end, NULL);
     exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
