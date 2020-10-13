@@ -2,10 +2,87 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "state.h"
 #include "../tecnicofs-api-constants.h"
 
 inode_t inode_table[INODE_TABLE_SIZE];
+
+/*sync variables*/
+int syncStrat;
+void *sync_lock;
+
+/*Initiates the sync method inserted in the input*/
+void Strat_Init(char *strat){
+    if(strcmp(strat,"mutex") == 0){
+        syncStrat = MSYNC;
+    }
+    else if(strcmp(strat,"rwlock") == 0){
+        syncStrat = RWSYNC;
+    }
+    else if(strcmp(strat,"nosync") == 0){
+        syncStrat = NOSYNC;
+    }
+    else{
+        fprintf(stderr, "Error: %s is not an available sync strategy\n",strat);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void * Lock_Init(){
+    printf("MODE: %d\n", syncStrat);
+
+    if(syncStrat == MSYNC){
+        pthread_mutex_t* mlock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+        pthread_mutex_init(mlock, NULL);
+        printf("%p\n",(void*)mlock);
+        return (void*) mlock;
+    }
+    else if(syncStrat == RWSYNC){
+        pthread_rwlock_t* rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
+        pthread_rwlock_init(rwlock, NULL);
+        printf("%p\n",(void*)rwlock);
+        return (void*) rwlock;
+    }
+    return NULL;
+}
+
+void Destroy_Lock(void* lock){
+    free(lock);
+}
+
+/*Lock code using the defined sync strategy*/
+void Lock(void* lock ,int rw){
+    if(syncStrat == MSYNC){
+        printf("M LOCK\n");
+        pthread_mutex_lock((pthread_mutex_t*) lock);
+    }
+    else if(syncStrat == RWSYNC){
+        if(rw == READ){
+            printf("R LOCK\n");
+            pthread_rwlock_rdlock((pthread_rwlock_t*) lock);
+        }
+        else if(rw == WRITE){
+            printf("W LOCK\n");
+            pthread_rwlock_wrlock((pthread_rwlock_t*) lock);
+        }
+    }
+}
+
+
+
+/*Unlock code using the defined sync strategy*/
+void Unlock(void* lock){
+    if(syncStrat == MSYNC){
+        printf("M UNLOCK\n");
+        pthread_mutex_unlock((pthread_mutex_t*) lock);
+    }
+    else if(syncStrat == RWSYNC){
+        printf("WR UNLOCK\n");
+        pthread_rwlock_unlock((pthread_rwlock_t*) lock);
+    }
+}
+
 
 
 /*
@@ -19,7 +96,10 @@ void insert_delay(int cycles) {
 /*
  * Initializes the i-nodes table.
  */
-void inode_table_init() {
+void inode_table_init(char *syncStrat) {
+    Strat_Init(syncStrat);
+    sync_lock = Lock_Init();
+    
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         inode_table[i].nodeType = T_NONE;
         inode_table[i].data.dirEntries = NULL;
@@ -40,6 +120,7 @@ void inode_table_destroy() {
             free(inode_table[i].data.dirEntries);
         }
     }
+    Destroy_Lock(sync_lock);
 }
 
 /*

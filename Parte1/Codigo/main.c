@@ -21,39 +21,12 @@ FILE *InputFile;
 FILE *OutputFile;
 char *InputFile_Name;
 char *OutputFile_Name;
-char *SyncStrat;
+char *syncStrat;
 
 struct timeval start, end;
 double exectime;
 
-/*
-*Possible code for pool
-*(Possible code 1)
-*   while(numberCommands > 0){
-*       for(i=0; i<numberThreads; i++){ 
-*           pthread_create (&tid[i], NULL, applyComand, NULL);
-*       }
-*       
-*       for(i=0; i<numberThreads; i++){
-*           pthread_join(tid[i])
-*       }
-*   }
-
-
-*(Possible code 2)
-*   for(i=0; i<numberThreads; i++){
-*           removeCommand();
-*           pthread_create (&tid[i], NULL, applyComand, NULL);
-*       }
-*   for(i=0; i<numberThreads && numberCommand >0; i++)
-*       pthread_join(tid[i]);
-*       pthread_create (&tid[i], NULL, applyComand, NULL);
-*       if((i + 1) == numberThreads){
-*           i = 0;
-*       }
-*   }
-*/
-
+void * sync_lock;
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -66,10 +39,13 @@ int insertCommand(char* data) {
 
 //^ Removes command from vector inputCommands
 char* removeCommand() {
+    Lock(sync_lock, WRITE);
     if(numberCommands > 0){
         numberCommands--;
+        Unlock(sync_lock);
         return inputCommands[headQueue++];  
     }
+    Unlock(sync_lock);
     return NULL;
 }
 
@@ -130,9 +106,8 @@ void processInput(){
     fclose(InputFile);
 }
 
-void applyCommands()
+void *applyCommands()
 {   
-    //!Remover o while;
     while (numberCommands > 0)
     {
         const char* command = removeCommand();
@@ -187,36 +162,55 @@ void applyCommands()
             }
         }
     }
-    //!pthread_exit(EXIT_SUCCESS);
+    
+    pthread_exit(EXIT_SUCCESS);
 }
-void pool(){
-    //pthread_t tid [numberThreads];
+void threadPool(){
+    pthread_t tid [numberThreads];
+    int i;
+
     //* Start timer
     gettimeofday(&start, NULL);
-    applyCommands();
+
+    for(i=0; i<numberThreads; i++){ 
+        if(pthread_create (&tid[i], NULL, applyCommands(), NULL) != 0){
+            fprintf(stderr, "Error: problems creating thread\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    for(i=0; i<numberThreads; i++){
+        if(pthread_join (tid[i], NULL) != 0){
+            fprintf(stderr, "Error: problems joining thread\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
-int main(int argc, char* argv[])
-{   
-    if(argc != 3)
-    {
+int main(int argc, char* argv[]){   
+    if(argc != 5){
         fprintf(stderr, "Error: wrong number of arguments\n");
         exit(EXIT_FAILURE);
     }
 
     InputFile_Name = argv[1];
     OutputFile_Name = argv[2];
-    //!numberThreads =  atoi(argv[3]);
-    //!SyncStrat = argv[4];
+    numberThreads =  atoi(argv[3]);
+    syncStrat = argv[4];
+
+    printf("NT = %d\n", numberThreads);
+    if(numberThreads == 1 && strcmp(syncStrat,"nosync") != 0){
+        fprintf(stderr, "Error: can only use nosync with 1 thread\n");
+        exit(EXIT_FAILURE);
+    }
 
     /* init filesystem */
-    init_fs();
+    init_fs(syncStrat);
+    sync_lock = Lock_Init();
 
     /* process input and print tree */
     processInput();
 
-    //! Not final name ?
-    pool();
+    threadPool();
 
     //* Open/Create output file
     OutputFile = fopen(OutputFile_Name, "w");
@@ -225,6 +219,7 @@ int main(int argc, char* argv[])
     fclose(OutputFile);
 
     /* release allocated memory */
+    Destroy_Lock(sync_lock);
     destroy_fs();
     
     // * End timer
