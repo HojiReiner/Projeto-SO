@@ -43,7 +43,7 @@ char* removeCommand() {
     if(numberCommands > 0){
         numberCommands--;
         Unlock(sync_lock);
-        return inputCommands[headQueue++];  
+        return inputCommands[headQueue++];
     }
     Unlock(sync_lock);
     return NULL;
@@ -106,13 +106,10 @@ void processInput(){
     fclose(InputFile);
 }
 
-void *applyCommands()
-{   
-    while (numberCommands > 0)
-    {
+void *applyCommands(){   
+    while (numberCommands > 0){
         const char* command = removeCommand();
-        if (command == NULL)
-        {
+        if (command == NULL){
             continue;
         }
 
@@ -120,18 +117,15 @@ void *applyCommands()
         char token, type;
         char name[MAX_INPUT_SIZE];
         int numTokens = sscanf(command, "%c %s %c", &token, name, &type);
-        if (numTokens < 2)
-        {
+        if (numTokens < 2){
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
 
         int searchResult;
-        switch (token)
-        {
+        switch (token){
             case 'c':
-                switch (type)
-                {
+                switch (type){
                     case 'f':
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
@@ -159,12 +153,12 @@ void *applyCommands()
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);
-            }
+            } pthread_exit(EXIT_SUCCESS);
         }
     }
-    
-    pthread_exit(EXIT_SUCCESS);
+    return NULL;
 }
+
 void threadPool(){
     pthread_t tid [numberThreads];
     int i;
@@ -178,9 +172,13 @@ void threadPool(){
             exit(EXIT_FAILURE);
         }
     }
-    for(i=0; i<numberThreads; i++){
+    
+    printf("BEEP\n");
+
+    for(i=0 ; i < numberThreads ; i++){
         if(pthread_join (tid[i], NULL) != 0){
             fprintf(stderr, "Error: problems joining thread\n");
+            printf("BOOOP");
             exit(EXIT_FAILURE);
         }
     }

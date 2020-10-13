@@ -29,19 +29,15 @@ void Strat_Init(char *strat){
     }
 }
 
-void * Lock_Init(){
-    printf("MODE: %d\n", syncStrat);
-
+void *Lock_Init(){
     if(syncStrat == MSYNC){
         pthread_mutex_t* mlock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
         pthread_mutex_init(mlock, NULL);
-        printf("%p\n",(void*)mlock);
         return (void*) mlock;
     }
     else if(syncStrat == RWSYNC){
         pthread_rwlock_t* rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
         pthread_rwlock_init(rwlock, NULL);
-        printf("%p\n",(void*)rwlock);
         return (void*) rwlock;
     }
     return NULL;
@@ -54,16 +50,13 @@ void Destroy_Lock(void* lock){
 /*Lock code using the defined sync strategy*/
 void Lock(void* lock ,int rw){
     if(syncStrat == MSYNC){
-        printf("M LOCK\n");
         pthread_mutex_lock((pthread_mutex_t*) lock);
     }
     else if(syncStrat == RWSYNC){
         if(rw == READ){
-            printf("R LOCK\n");
             pthread_rwlock_rdlock((pthread_rwlock_t*) lock);
         }
         else if(rw == WRITE){
-            printf("W LOCK\n");
             pthread_rwlock_wrlock((pthread_rwlock_t*) lock);
         }
     }
@@ -74,11 +67,9 @@ void Lock(void* lock ,int rw){
 /*Unlock code using the defined sync strategy*/
 void Unlock(void* lock){
     if(syncStrat == MSYNC){
-        printf("M UNLOCK\n");
         pthread_mutex_unlock((pthread_mutex_t*) lock);
     }
     else if(syncStrat == RWSYNC){
-        printf("WR UNLOCK\n");
         pthread_rwlock_unlock((pthread_rwlock_t*) lock);
     }
 }
@@ -99,7 +90,7 @@ void insert_delay(int cycles) {
 void inode_table_init(char *syncStrat) {
     Strat_Init(syncStrat);
     sync_lock = Lock_Init();
-    
+
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         inode_table[i].nodeType = T_NONE;
         inode_table[i].data.dirEntries = NULL;
