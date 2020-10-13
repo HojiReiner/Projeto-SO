@@ -43,7 +43,7 @@ void *Lock_Init(){
     return NULL;
 }
 
-void Destroy_Lock(void* lock)
+void Destroy_Lock(void* lock){
     free(lock);
 }
 
