@@ -4,77 +4,11 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "state.h"
+#include "sync.h"
 #include "../tecnicofs-api-constants.h"
 
 inode_t inode_table[INODE_TABLE_SIZE];
-
-/*sync variables*/
-int syncStrat;
-void *state_lock;
-
-/*Initiates the sync method inserted in the input*/
-void Strat_Init(char *strat){
-    if(strcmp(strat,"mutex") == 0){
-        syncStrat = MSYNC;
-    }
-    else if(strcmp(strat,"rwlock") == 0){
-        syncStrat = RWSYNC;
-    }
-    else if(strcmp(strat,"nosync") == 0){
-        syncStrat = NOSYNC;
-    }
-    else{
-        fprintf(stderr, "Error: %s is not an available sync strategy\n",strat);
-        exit(EXIT_FAILURE);
-    }
-}
-
-void *Lock_Init(){
-    if(syncStrat == MSYNC){
-        pthread_mutex_t* mlock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-        pthread_mutex_init(mlock, NULL);
-        return (void*) mlock;
-    }
-    else if(syncStrat == RWSYNC){
-        pthread_rwlock_t* rwlock = (pthread_rwlock_t*) malloc(sizeof(pthread_rwlock_t));
-        pthread_rwlock_init(rwlock, NULL);
-        return (void*) rwlock;
-    }
-    return NULL;
-}
-
-void Destroy_Lock(void* lock){
-    free(lock);
-}
-
-/*Lock code using the defined sync strategy*/
-void Lock(void* lock ,int rw){
-    if(syncStrat == MSYNC){
-        pthread_mutex_lock((pthread_mutex_t*) lock);
-    }
-    else if(syncStrat == RWSYNC){
-        if(rw == READ){
-            pthread_rwlock_rdlock((pthread_rwlock_t*) lock);
-        }
-        else if(rw == WRITE){
-            pthread_rwlock_wrlock((pthread_rwlock_t*) lock);
-        }
-    }
-}
-
-
-
-/*Unlock code using the defined sync strategy*/
-void Unlock(void* lock){
-    if(syncStrat == MSYNC){
-        pthread_mutex_unlock((pthread_mutex_t*) lock);
-    }
-    else if(syncStrat == RWSYNC){
-        pthread_rwlock_unlock((pthread_rwlock_t*) lock);
-    }
-}
-
-
+Sync_Lock state_lock;
 
 /*
  * Sleeps for synchronization testing.
@@ -88,8 +22,7 @@ void insert_delay(int cycles) {
  * Initializes the i-nodes table.
  */
 void inode_table_init(char *syncStrat) {
-    Strat_Init(syncStrat);
-    state_lock = Lock_Init();
+    state_lock = Lock_Init(syncStrat);
 
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         inode_table[i].nodeType = T_NONE;

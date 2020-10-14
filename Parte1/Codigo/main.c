@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include "fs/sync.h"
 #include "fs/operations.h"
 
 #define MAX_COMMANDS 150000
@@ -26,7 +27,7 @@ char *syncStrat;
 struct timeval start, end;
 double exectime;
 
-void *main_lock = NULL;
+Sync_Lock main_lock;
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -39,7 +40,7 @@ int insertCommand(char* data) {
 
 //^ Removes command from vector inputCommands
 char* removeCommand() {
-    Lock(main_lock, WRITE);
+    Lock(main_lock, NA);
     if(numberCommands > 0){
         numberCommands--;
         Unlock(main_lock);
@@ -193,14 +194,26 @@ int main(int argc, char* argv[]){
     numberThreads =  atoi(argv[3]);
     syncStrat = argv[4];
 
-    if(numberThreads == 1 && strcmp(syncStrat,"nosync") != 0){
-        fprintf(stderr, "Error: can only use nosync with 1 thread\n");
+    if(strcmp(syncStrat,"nosync") == 0){
+        if(numberThreads == 1){
+            main_lock = Lock_Init(syncStrat);
+        }
+        else{
+            fprintf(stderr, "Error: can only use nosync with 1 thread\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else if(strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0){
+        main_lock = Lock_Init("mutex");
+    }
+    else{
+        fprintf(stderr, "Error: %s is not an available sync strategy\n",syncStrat);
         exit(EXIT_FAILURE);
     }
 
+
     /* init filesystem */
     init_fs(syncStrat);
-    main_lock = Lock_Init();
 
     /* process input and print tree */
     processInput();

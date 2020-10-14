@@ -17,15 +17,6 @@
 
 #define DELAY 5000
 
-/*sync mode constants*/
-#define MSYNC 0
-#define RWSYNC 1
-#define NOSYNC 3
-
-/*rwlock constants*/
-#define READ 1
-#define WRITE 2
-
 /*
  * Contains the name of the entry and respective i-number
  */
@@ -50,12 +41,6 @@ typedef struct inode_t {
 	union Data data;
     /* more i-node attributes will be added in future exercises */
 } inode_t;
-
-
-void *Lock_Init();
-void Destroy_Lock();
-void Lock(void* lock,int rw);
-void Unlock(void* lock);
 
 void insert_delay(int cycles);
 void inode_table_init(char *syncStrat);
