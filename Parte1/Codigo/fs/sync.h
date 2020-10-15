@@ -16,16 +16,7 @@ typedef struct lock_sync{
 	void* lock;
 } *Sync_Lock;
 
-/*
-Initializes a new lock_sync structures using the sync
-strategie defined by the string. The sync strategies
-available are:
-1."mutex"
-2."rwlock"
-3."nosync"
-Strings with a different name will make the program exit
-with failure
-*/
+
 Sync_Lock Lock_Init(char* strat);
 void Destroy_Lock(Sync_Lock x_lock);
 void Lock(Sync_Lock x_lock, int rw);

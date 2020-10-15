@@ -179,6 +179,7 @@ void threadPool(){
     //* Start timer
     gettimeofday(&start, NULL);
 
+    //* Creates threads
     for(i=0; i<numberThreads; i++){ 
         if(pthread_create (&tid[i], NULL, applyCommands, NULL) != 0){
             fprintf(stderr, "Error: problems creating thread\n");
@@ -186,10 +187,10 @@ void threadPool(){
         }
     }
 
-    for(i=0 ; i < numberThreads ; i++){
+    //* Joins threads
+    for(i = 0 ; i < numberThreads ; i++){
         if(pthread_join (tid[i], NULL) != 0){
             fprintf(stderr, "Error: problems joining thread\n");
-            printf("BOOOP");
             exit(EXIT_FAILURE);
         }
     }
@@ -207,7 +208,7 @@ int main(int argc, char* argv[]){
     syncStrat = argv[4];
 
 
-    /*Creates the lock for removeCommands*/
+    //*Creates the lock for removeCommands
     if(strcmp(syncStrat,"nosync") == 0){
         if(numberThreads == 1){
             remove_lock = Lock_Init(syncStrat);
@@ -238,13 +239,14 @@ int main(int argc, char* argv[]){
     threadPool();
 
     //* Open/Create output file
-    OutputFile = fopen(OutputFile_Name, "w");
+    if((OutputFile = fopen(OutputFile_Name, "w")) == NULL){
+        fprintf(stderr, "Error: file %s doesn't exist\n",OutputFile_Name);
+        exit(EXIT_FAILURE);
     print_tecnicofs_tree(OutputFile);
     //* Closes file
     fclose(OutputFile);
 
     /* release allocated memory */
-    
     destroy_fs();
     Destroy_Lock(remove_lock);
     Destroy_Lock(commands_lock);
