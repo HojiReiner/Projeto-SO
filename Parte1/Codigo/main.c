@@ -242,6 +242,7 @@ int main(int argc, char* argv[]){
     if((OutputFile = fopen(OutputFile_Name, "w")) == NULL){
         fprintf(stderr, "Error: file %s doesn't exist\n",OutputFile_Name);
         exit(EXIT_FAILURE);
+    }
     print_tecnicofs_tree(OutputFile);
     //* Closes file
     fclose(OutputFile);
