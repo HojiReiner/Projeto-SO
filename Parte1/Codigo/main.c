@@ -209,24 +209,24 @@ int main(int argc, char* argv[]){
 
 
     //*Creates the lock for removeCommands
-    if(strcmp(syncStrat,"nosync") == 0){
-        if(numberThreads == 1){
+    if(numberThreads > 1 && (strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0)){
+        remove_lock = Lock_Init("mutex");
+    }
+    else if(numberThreads == 1 && strcmp(syncStrat,"nosync") == 0){
             remove_lock = Lock_Init(syncStrat);
-        }
-        else{
+    }
+    else{
+        if(strcmp(syncStrat,"nosync") == 0 || numberThreads == 1){
             fprintf(stderr, "Error: can only use nosync with 1 thread\n");
             exit(EXIT_FAILURE);
         }
-    }
-    else if(strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0){
-        remove_lock = Lock_Init("mutex");
-    }
-    else{
-        fprintf(stderr, "Error: %s is not an available sync strategy\n",syncStrat);
-        exit(EXIT_FAILURE);
+        else{
+            fprintf(stderr, "Error: %s is not an available sync strategy\n",syncStrat);
+            exit(EXIT_FAILURE);
+        }
     }
 
-    /*Creates the lock for applyCommands*/
+    //*Creates the lock for applyCommands
     commands_lock = Lock_Init(syncStrat);
 
 
