@@ -27,7 +27,8 @@ char *syncStrat;
 struct timeval start, end;
 double exectime;
 
-Sync_Lock main_lock;
+Sync_Lock remove_lock;
+Sync_Lock commands_lock;
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -40,13 +41,13 @@ int insertCommand(char* data) {
 
 //^ Removes command from vector inputCommands
 char* removeCommand() {
-    Lock(main_lock, NA);
+    Lock(remove_lock, NA);
     if(numberCommands > 0){
         numberCommands--;
-        Unlock(main_lock);
+        Unlock(remove_lock);
         return inputCommands[headQueue++];
     }
-    Unlock(main_lock);
+    Unlock(remove_lock);
     return NULL;
 }
 
@@ -128,12 +129,16 @@ void *applyCommands(){
             case 'c':
                 switch (type){
                     case 'f':
+                        Lock(commands_lock, LWRITE);
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
+                        Unlock(commands_lock);
                         break;
                     case 'd':
+                        Lock(commands_lock, LWRITE);
                         printf("Create directory: %s\n", name);
                         create(name, T_DIRECTORY);
+                        Unlock(commands_lock);
                         break;
                     default:
                         fprintf(stderr, "Error: invalid node type\n");
@@ -141,15 +146,22 @@ void *applyCommands(){
                 }
                 break;
             case 'l': 
+                Lock(commands_lock, LREAD);
                 searchResult = lookup(name);
-                if (searchResult >= 0)
+                if (searchResult >= 0){
                     printf("Search: %s found\n", name);
-                else
+                    Unlock(commands_lock);
+                }
+                else{
                     printf("Search: %s not found\n", name);
+                    Unlock(commands_lock);
+                }
                 break;
             case 'd':
+                Lock(commands_lock, LWRITE);
                 printf("Delete: %s\n", name);
                 delete(name);
+                Unlock(commands_lock);
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -194,9 +206,11 @@ int main(int argc, char* argv[]){
     numberThreads =  atoi(argv[3]);
     syncStrat = argv[4];
 
+
+    /*Creates the lock for removeCommands*/
     if(strcmp(syncStrat,"nosync") == 0){
         if(numberThreads == 1){
-            main_lock = Lock_Init(syncStrat);
+            remove_lock = Lock_Init(syncStrat);
         }
         else{
             fprintf(stderr, "Error: can only use nosync with 1 thread\n");
@@ -204,12 +218,15 @@ int main(int argc, char* argv[]){
         }
     }
     else if(strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0){
-        main_lock = Lock_Init("mutex");
+        remove_lock = Lock_Init("mutex");
     }
     else{
         fprintf(stderr, "Error: %s is not an available sync strategy\n",syncStrat);
         exit(EXIT_FAILURE);
     }
+
+    /*Creates the lock for applyCommands*/
+    commands_lock = Lock_Init(syncStrat);
 
 
     /* init filesystem */
@@ -229,7 +246,8 @@ int main(int argc, char* argv[]){
     /* release allocated memory */
     
     destroy_fs();
-    Destroy_Lock(main_lock);
+    Destroy_Lock(remove_lock);
+    Destroy_Lock(commands_lock);
 
     // * End timer
     gettimeofday(&end, NULL);
