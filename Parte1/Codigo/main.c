@@ -17,16 +17,18 @@ char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
 
-//^Input Variables
+//~ Input Variables
 FILE *InputFile;
 FILE *OutputFile;
 char *InputFile_Name;
 char *OutputFile_Name;
 char *syncStrat;
 
+//~ Time Variables
 struct timeval start, end;
 double exectime;
 
+//~ Lock Variables
 Sync_Lock remove_lock;
 Sync_Lock commands_lock;
 
@@ -100,7 +102,7 @@ void processInput(){
             case '#':
                 break;
             
-            default: { /* error */
+            default: { //* error
                 errorParse();
             }
         }
@@ -114,7 +116,6 @@ void *applyCommands(){
         if (command == NULL){
             continue;
         }
-
 
         char token, type;
         char name[MAX_INPUT_SIZE];
@@ -150,12 +151,11 @@ void *applyCommands(){
                 searchResult = lookup(name);
                 if (searchResult >= 0){
                     printf("Search: %s found\n", name);
-                    Unlock(commands_lock);
                 }
                 else{
                     printf("Search: %s not found\n", name);
-                    Unlock(commands_lock);
                 }
+                Unlock(commands_lock);
                 break;
             case 'd':
                 Lock(commands_lock, LWRITE);
@@ -204,14 +204,18 @@ int main(int argc, char* argv[]){
 
     InputFile_Name = argv[1];
     OutputFile_Name = argv[2];
-    numberThreads =  atoi(argv[3]);
     syncStrat = argv[4];
+
+    if((numberThreads =  atoi(argv[3])) <= 0){
+        fprintf(stderr, "Error: not a valid number of threads\n");
+        exit(EXIT_FAILURE);
+    }
 
 
     //*Creates the lock for removeCommands
     if(numberThreads > 1 && (strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0)){
         remove_lock = Lock_Init("mutex");
-    }
+    }  
     else if(numberThreads == 1 && strcmp(syncStrat,"nosync") == 0){
             remove_lock = Lock_Init(syncStrat);
     }
@@ -230,12 +234,13 @@ int main(int argc, char* argv[]){
     commands_lock = Lock_Init(syncStrat);
 
 
-    /* init filesystem */
+    //* init filesystem 
     init_fs(syncStrat);
 
-    /* process input and print tree */
+    //* Process input and print tree
     processInput();
 
+    //* Initiates thread pool and executes the commands
     threadPool();
 
     //* Open/Create output file
@@ -247,12 +252,12 @@ int main(int argc, char* argv[]){
     //* Closes file
     fclose(OutputFile);
 
-    /* release allocated memory */
+    //* Release allocated memory
     destroy_fs();
     Destroy_Lock(remove_lock);
     Destroy_Lock(commands_lock);
 
-    // * End timer
+    //* End timer
     gettimeofday(&end, NULL);
     exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
     printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
