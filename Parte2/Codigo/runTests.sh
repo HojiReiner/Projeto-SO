@@ -19,7 +19,6 @@ for InputFile in $(ls $1/*.txt); do
         
         file=$(basename $InputFile .txt)
         ./tecnicofs ${InputFile} ${2}/${filr}-${Threads}.txt ${Threads} mutex | grep "TecnicoFS"
-        echo ""
     done
 
 done
