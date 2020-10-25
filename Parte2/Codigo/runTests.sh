@@ -18,7 +18,7 @@ for InputFile in $(ls $1/*.txt); do
         echo -e "\e[1;33mInputFile=$InputFile NumberThreads=$Threads \e[0m"
         
         file=$(basename $InputFile .txt)
-        ./tecnicofs ${InputFile} ${2}/${filr}-${Threads}.txt ${Threads} mutex | grep "TecnicoFS"
+        ./tecnicofs ${InputFile} ${2}/${file}-${Threads}.txt ${Threads} mutex | grep "TecnicoFS"
     done
 
 done
