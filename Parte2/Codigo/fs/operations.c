@@ -155,7 +155,7 @@ int lookup(char *name, locks_to_unlock *ltu, int mode) {
 
 	char *path = strtok_r(full_path, delim, &saveptr);
 
-	if(path == NULL){
+	if(path == NULL && mode == LWRITE){
 		writeLock(ltu,current_inumber);
 	}else{
 		readLock(ltu,current_inumber);
