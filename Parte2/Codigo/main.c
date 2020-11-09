@@ -29,8 +29,7 @@ struct timeval start, end;
 double exectime;
 
 //~ Lock Variables
-Sync_Lock remove_lock;
-Sync_Lock commands_lock;
+pthread_mutex_t lock;
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -43,13 +42,13 @@ int insertCommand(char* data) {
 
 //^ Removes command from vector inputCommands
 char* removeCommand() {
-    Lock(remove_lock, NA);
+    pthread_mutex_lock(&lock);
     if(numberCommands > 0){
         numberCommands--;
-        Unlock(remove_lock);
+        pthread_mutex_unlock(&lock);
         return inputCommands[headQueue++];
     }
-    Unlock(remove_lock);
+    pthread_mutex_unlock(&lock);
     return NULL;
 }
 
@@ -130,16 +129,12 @@ void *applyCommands(){
             case 'c':
                 switch (type){
                     case 'f':
-                        Lock(commands_lock, LWRITE);
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
-                        Unlock(commands_lock);
                         break;
                     case 'd':
-                        Lock(commands_lock, LWRITE);
                         printf("Create directory: %s\n", name);
                         create(name, T_DIRECTORY);
-                        Unlock(commands_lock);
                         break;
                     default:
                         fprintf(stderr, "Error: invalid node type\n");
@@ -147,21 +142,17 @@ void *applyCommands(){
                 }
                 break;
             case 'l': 
-                Lock(commands_lock, LREAD);
-                searchResult = lookup(name);
+                searchResult = lookfor(name);
                 if (searchResult >= 0){
                     printf("Search: %s found\n", name);
                 }
                 else{
                     printf("Search: %s not found\n", name);
                 }
-                Unlock(commands_lock);
                 break;
             case 'd':
-                Lock(commands_lock, LWRITE);
                 printf("Delete: %s\n", name);
                 delete(name);
-                Unlock(commands_lock);
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -194,45 +185,28 @@ void threadPool(){
             exit(EXIT_FAILURE);
         }
     }
+
+    //* End timer
+    gettimeofday(&end, NULL);
+    exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
+    printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
 }
 
 int main(int argc, char* argv[]){   
-    if(argc != 5){
+    if(argc != 4){
         fprintf(stderr, "Error: wrong number of arguments\n");
         exit(EXIT_FAILURE);
     }
 
     InputFile_Name = argv[1];
     OutputFile_Name = argv[2];
-    syncStrat = argv[4];
 
     if((numberThreads =  atoi(argv[3])) <= 0){
         fprintf(stderr, "Error: not a valid number of threads\n");
         exit(EXIT_FAILURE);
     }
 
-
-    //*Creates the lock for removeCommands
-    if(numberThreads > 1 && (strcmp(syncStrat,"mutex") == 0 || strcmp(syncStrat,"rwlock") == 0)){
-        remove_lock = Lock_Init("mutex");
-    }  
-    else if(numberThreads == 1 && strcmp(syncStrat,"nosync") == 0){
-            remove_lock = Lock_Init(syncStrat);
-    }
-    else{
-        if(strcmp(syncStrat,"nosync") == 0 || numberThreads == 1){
-            fprintf(stderr, "Error: can only use nosync with 1 thread\n");
-            exit(EXIT_FAILURE);
-        }
-        else{
-            fprintf(stderr, "Error: %s is not an available sync strategy\n",syncStrat);
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    //*Creates the lock for applyCommands
-    commands_lock = Lock_Init(syncStrat);
-
+    pthread_mutex_init(&lock, NULL);
 
     //* init filesystem 
     init_fs(syncStrat);
@@ -254,13 +228,7 @@ int main(int argc, char* argv[]){
 
     //* Release allocated memory
     destroy_fs();
-    Destroy_Lock(remove_lock);
-    Destroy_Lock(commands_lock);
-
-    //* End timer
-    gettimeofday(&end, NULL);
-    exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
-    printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
+    pthread_mutex_destroy(&lock);
 
     exit(EXIT_SUCCESS);
 }

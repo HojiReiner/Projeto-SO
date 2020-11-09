@@ -9,6 +9,32 @@
 
 inode_t inode_table[INODE_TABLE_SIZE];
 
+//* Lock the inode_table[inumber] for write 
+void wrLock(int inumber){
+    if(pthread_rwlock_wrlock(&(inode_table[inumber].lock)) != 0){
+        fprintf(stderr, "Error: problem locking wrlock\n");
+        exit(EXIT_FAILURE);
+    }
+    
+}
+
+//* Lock the inode_table[inumber] for read
+void rdLock(int inumber){
+    if(pthread_rwlock_rdlock(&(inode_table[inumber].lock)) != 0){
+        fprintf(stderr, "Error: problem locking rdlock\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//* Unlock the inode_table[inumber]
+void unlock(int inumber){
+    if(pthread_rwlock_unlock(&(inode_table[inumber].lock)) != 0){
+        fprintf(stderr, "Error: problem unlocking rwlock\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 /*
  * Sleeps for synchronization testing.
  */
@@ -26,6 +52,7 @@ void inode_table_init(char *syncStrat) {
         inode_table[i].nodeType = T_NONE;
         inode_table[i].data.dirEntries = NULL;
         inode_table[i].data.fileContents = NULL;
+        pthread_rwlock_init(&inode_table[i].lock, NULL);
     }
 }
 
@@ -35,10 +62,11 @@ void inode_table_init(char *syncStrat) {
 
 void inode_table_destroy() {
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
+        pthread_rwlock_destroy(&inode_table[i].lock);
         if (inode_table[i].nodeType != T_NONE) {
             /* as data is an union, the same pointer is used for both dirEntries and fileContents */
             /* just release one of them */
-	  if (inode_table[i].data.dirEntries)
+	    if (inode_table[i].data.dirEntries)
             free(inode_table[i].data.dirEntries);
         }
     }
@@ -57,21 +85,25 @@ int inode_create(type nType) {
     insert_delay(DELAY);
 
     for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
-        if (inode_table[inumber].nodeType == T_NONE) {
-            inode_table[inumber].nodeType = nType;
+        if(pthread_rwlock_trywrlock(&inode_table[inumber].lock) == 0){
+            if (inode_table[inumber].nodeType == T_NONE) {
+                inode_table[inumber].nodeType = nType;
 
-            if (nType == T_DIRECTORY) {
-                /* Initializes entry table */
-                inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
+                if (nType == T_DIRECTORY) {
+                    /* Initializes entry table */
+                    inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
                 
-                for (int i = 0; i < MAX_DIR_ENTRIES; i++) {
-                    inode_table[inumber].data.dirEntries[i].inumber = FREE_INODE;
+                    for (int i = 0; i < MAX_DIR_ENTRIES; i++) {
+                        inode_table[inumber].data.dirEntries[i].inumber = FREE_INODE;
+                    }
                 }
-            }
-            else {
+                else {
                 inode_table[inumber].data.fileContents = NULL;
+                }
+                unlock(inumber);
+                return inumber;
             }
-            return inumber;
+            unlock(inumber);
         }
     }
     return FAIL;

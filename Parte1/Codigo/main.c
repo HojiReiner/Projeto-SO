@@ -194,6 +194,11 @@ void threadPool(){
             exit(EXIT_FAILURE);
         }
     }
+    
+    //* End timer
+    gettimeofday(&end, NULL);
+    exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
+    printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
 }
 
 int main(int argc, char* argv[]){   
@@ -256,11 +261,6 @@ int main(int argc, char* argv[]){
     destroy_fs();
     Destroy_Lock(remove_lock);
     Destroy_Lock(commands_lock);
-
-    //* End timer
-    gettimeofday(&end, NULL);
-    exectime = (end.tv_sec-start.tv_sec)*1000000 + end.tv_usec-start.tv_usec;
-    printf("TecnicoFS completed in [%0.4f] seconds. \n", exectime/1000000);
 
     exit(EXIT_SUCCESS);
 }
