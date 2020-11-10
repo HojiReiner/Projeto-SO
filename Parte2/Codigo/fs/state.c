@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
 #include "state.h"
 #include "sync.h"
 #include "../tecnicofs-api-constants.h"
@@ -83,9 +84,10 @@ void inode_table_destroy() {
 int inode_create(type nType) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
+    int lock_error;
 
     for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
-        if(pthread_rwlock_trywrlock(&inode_table[inumber].lock) == 0){
+        if((lock_error = pthread_rwlock_trywrlock(&(inode_table[inumber].lock))) == 0){
             if (inode_table[inumber].nodeType == T_NONE) {
                 inode_table[inumber].nodeType = nType;
 
@@ -104,6 +106,12 @@ int inode_create(type nType) {
                 return inumber;
             }
             unlock(inumber);
+        }
+        
+        //* If it wasn't able to get the lock because of the wrong reason
+        if(lock_error != EBUSY && lock_error != 0){
+            fprintf(stderr, "Error: problem locking wrlock\n");
+            exit(EXIT_FAILURE);
         }
     }
     return FAIL;

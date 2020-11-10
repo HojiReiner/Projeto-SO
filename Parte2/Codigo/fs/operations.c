@@ -168,7 +168,6 @@ int lookup(char *name, locks_to_unlock *ltu, int mode) {
 	while (path != NULL && (current_inumber = lookup_sub_node(path, data.dirEntries)) != FAIL){
 		path = strtok_r(NULL, delim, &saveptr);
 
-		//! TRATAR ERROS
 		//* If it's the last node of the search
 		if(path == NULL && mode == LWRITE){
 			writeLock(ltu, current_inumber);
@@ -232,6 +231,7 @@ int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
 		return FAIL;
 	}
 
+	//? Preciso ?
 	//* Lock the created node
 	writeLock(ltu, child_inumber);
 
