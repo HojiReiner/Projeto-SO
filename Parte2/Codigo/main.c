@@ -6,7 +6,6 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include "fs/sync.h"
 #include "fs/operations.h"
 
 #define MAX_COMMANDS 10
@@ -38,6 +37,38 @@ int addPos = 0;
 int rmPos = 0;
 int done = false;
 
+//* Lock global mutex
+void Lock(){
+    if(pthread_mutex_lock(&lock) != 0){
+        fprintf(stderr, "Error: problem locking mutex\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//* Unlock global mutex
+void Unlock(){
+    if(pthread_mutex_unlock(&lock) != 0){
+        fprintf(stderr, "Error: problem unlocking mutex\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//*
+void Wait(pthread_cond_t* cond){
+    if(pthread_cond_wait(cond,&lock) != 0){
+        fprintf(stderr, "Error: problem in condition waiting\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//*
+void Signal(pthread_cond_t* cond){
+    if(pthread_cond_signal(cond) != 0){
+        fprintf(stderr, "Error: problem in signaling condition\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -49,6 +80,7 @@ int insertCommand(char* data) {
 
 }
 
+
 //^ Removes command from vector inputCommands
 char* removeCommand() {
     if(rmPos == MAX_COMMANDS){
@@ -57,10 +89,12 @@ char* removeCommand() {
     return inputCommands[rmPos++];
 }
 
+
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
     exit(EXIT_FAILURE);
 }
+
 
 void processInput(){
     char line[MAX_INPUT_SIZE];
@@ -85,9 +119,9 @@ void processInput(){
             continue;
         }
 
-        pthread_mutex_lock(&lock);
+        Lock();
         while(nCommands == MAX_COMMANDS){
-            pthread_cond_wait(&addCommand,&lock);
+            Wait(&addCommand);
         }
         nCommands++;
 
@@ -121,15 +155,14 @@ void processInput(){
                 errorParse();
             }
         }
-        pthread_cond_signal(&rmCommand);
-        pthread_mutex_unlock(&lock);
-
+        Signal(&rmCommand);
+        Unlock();
     }
 
-    pthread_mutex_lock(&lock);
+    Lock();
     done = true;
-    pthread_cond_signal(&rmCommand);
-    pthread_mutex_unlock(&lock);
+    Signal(&rmCommand);
+    Unlock();
 
     fclose(InputFile);
 }
@@ -143,13 +176,13 @@ void *applyCommands(){
     
     while(true){
 
-        pthread_mutex_lock(&lock);
+        Lock();
         while(nCommands == 0 && !done){
-            pthread_cond_wait(&rmCommand,&lock);
+            Wait(&rmCommand);
         }
 
         if(nCommands == 0 && done){
-            pthread_mutex_unlock(&lock);
+            Unlock();
             return NULL;
         }
 
@@ -162,8 +195,8 @@ void *applyCommands(){
             exit(EXIT_FAILURE);
         }
         //???????????
-        pthread_cond_signal(&addCommand);
-        pthread_mutex_unlock(&lock);
+        Signal(&addCommand);
+        Unlock();
         
         switch (token){
             case 'c':

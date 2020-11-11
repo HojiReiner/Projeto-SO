@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include "state.h"
-#include "sync.h"
 #include "../tecnicofs-api-constants.h"
 
 inode_t inode_table[INODE_TABLE_SIZE];
