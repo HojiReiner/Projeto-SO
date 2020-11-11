@@ -35,7 +35,7 @@ pthread_cond_t addCommand;
 int nCommands = 0;
 int addPos = 0;
 int rmPos = 0;
-int done = false;
+bool done = false;
 
 //* Lock global mutex
 void Lock(){
