@@ -47,7 +47,7 @@ void insert_delay(int cycles) {
 /*
  * Initializes the i-nodes table.
  */
-void inode_table_init(char *syncStrat) {
+void inode_table_init() {
 
     for (int i = 0; i < INODE_TABLE_SIZE; i++) {
         inode_table[i].nodeType = T_NONE;

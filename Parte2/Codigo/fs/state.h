@@ -48,7 +48,7 @@ void wrLock(int inumber);
 void rdLock(int inumber);
 void unlock(int inumber);
 void insert_delay(int cycles);
-void inode_table_init(char *syncStrat);
+void inode_table_init();
 void inode_table_destroy();
 int inode_create(type nType);
 int inode_delete(int inumber);
