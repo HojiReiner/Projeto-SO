@@ -12,7 +12,6 @@
 #define MAX_INPUT_SIZE 100
 
 int numberThreads = 0;
-
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int headQueue = 0;
 
@@ -64,6 +63,14 @@ void Wait(pthread_cond_t* cond){
 //*
 void Signal(pthread_cond_t* cond){
     if(pthread_cond_signal(cond) != 0){
+        fprintf(stderr, "Error: problem in signaling condition\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//*
+void Broadcast(pthread_cond_t* cond){
+    if(pthread_cond_broadcast(cond) != 0){
         fprintf(stderr, "Error: problem in signaling condition\n");
         exit(EXIT_FAILURE);
     }
@@ -161,7 +168,7 @@ void processInput(){
 
     Lock();
     done = true;
-    Signal(&rmCommand);
+    Broadcast(&rmCommand);
     Unlock();
 
     fclose(InputFile);
@@ -211,7 +218,6 @@ void *applyCommands(){
                         break;
                     default:
                         fprintf(stderr, "Error: invalid node type \n");
-                        fprintf(stderr, "COMMAND(%s)\n TOKEN(%c)\n TYPE(%c)\n  \n", command, token, type);
                         exit(EXIT_FAILURE);
                 }
                 break;
