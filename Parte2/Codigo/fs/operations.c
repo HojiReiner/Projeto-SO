@@ -21,6 +21,21 @@ typedef struct locks_to_unlock{
 } locks_to_unlock;
 
 
+int check(locks_to_unlock *ltu, int inumber){
+	for(int i = 0; i < ltu->rdSize; i++){
+		if(inumber == ltu->rdArray[i]){
+			return SUCCESS;
+		}
+	}
+	for(int i = 0; i < ltu->wrSize; i++){
+		if(inumber == ltu->wrArray[i]){
+			return SUCCESS;
+		}
+	}
+	return FAIL;	
+}
+
+
 /*
  * Locks the inumber and adds to the ltu
  * Input:
@@ -33,34 +48,9 @@ typedef struct locks_to_unlock{
  *  - FAIL: if not found
  */
 void lock_inode(locks_to_unlock *ltu, int inumber, int mode, int command){
-	int i;
 	if(command == MOVE){
-		if(mode == WRITE){
-			for(i = 0; i < ltu->rdSize; i++){
-				if(inumber == ltu->rdArray[i]){
-					unlock(inumber);
-					wrLock(inumber);
-					return;
-				}
-			}
-			for(i = 0; i < ltu->wrSize; i++){
-				if(inumber == ltu->wrArray[i]){
-					return;
-				}
-			}		
-
-		}
-		else if(mode == READ){
-			for(i = 0; i < ltu->rdSize; i++){
-				if(inumber == ltu->rdArray[i]){
-					return;
-				}
-			}
-			for(i = 0; i < ltu->wrSize; i++){
-				if(inumber == ltu->wrArray[i]){
-					return;
-				}
-			}		
+		if(check(ltu, inumber) != FAIL){
+				return;
 		}
 	}
 
@@ -410,13 +400,8 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 	strcpy(destiny_copy, destiny);
 	split_parent_child_from_path(destiny_copy, &destinyParent_name, &destinyChild_name);
 
-	
-	originParent_inumber = lookfor(originParent_name);
-	destinyParent_inumber = lookfor(destinyParent_name);
-	
-
 	//* Defines an order for the locks
-	if(originParent_inumber < destinyParent_inumber){
+	if(strcmp(originParent_name, destinyParent_name) < 0){
 		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
 		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
 	}
@@ -452,20 +437,12 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 		return FAIL;
 	}
 
-	for(int i = 0; i < ltu->rdSize; i++){
-		if(originChild_inumber == ltu->rdArray[i]){
-			printf("failed to move %s, cannot move to inside of itslef\n",
+	if(check(ltu, originChild_inumber) != FAIL){
+		printf("failed to move %s, cannot move to inside of itslef\n",
 		    originChild_name);
-			return FAIL;
-		}
+		return FAIL;
 	}
-	for(int i = 0; i < ltu->wrSize; i++){
-		if(originChild_inumber == ltu->wrArray[i]){
-			printf("failed to move %s, cannot move to inside of itslef\n",
-		    originChild_name);
-			return FAIL;
-		}
-	}	
+	
 
 	//* Lock the node that is going to be deleted and moved
 	lock_inode(ltu, originChild_inumber, WRITE, MOVE);
