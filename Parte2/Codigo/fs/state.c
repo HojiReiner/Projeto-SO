@@ -12,24 +12,43 @@ inode_t inode_table[INODE_TABLE_SIZE];
 //* Lock the inode_table[inumber] for write 
 void wrLock(int inumber){
     if(pthread_rwlock_wrlock(&(inode_table[inumber].lock)) != 0){
-        fprintf(stderr, "Error: problem locking wrlock\n");
+        fprintf(stderr, "Error: problem locking in wrlock\n");
         exit(EXIT_FAILURE);
     }
     
 }
 
-//* Lock the inode_table[inumber] for read
-void rdLock(int inumber){
-    if(pthread_rwlock_rdlock(&(inode_table[inumber].lock)) != 0){
-        fprintf(stderr, "Error: problem locking rdlock\n");
+
+//* Tries to wrlock the inode_table[inumber]
+int try_wrLock(int inumber){
+    int error;
+    error = pthread_rwlock_trywrlock(&(inode_table[inumber].lock));
+    if(error == 0){
+        return SUCCESS;
+    }
+    else if(error == EBUSY){
+        return FAIL;
+    }
+    else{
+        fprintf(stderr, "Error: problem locking in trywrlock\n");
         exit(EXIT_FAILURE);
     }
 }
 
+
+//* Lock the inode_table[inumber] for read
+void rdLock(int inumber){
+    if(pthread_rwlock_rdlock(&(inode_table[inumber].lock)) != 0){
+        fprintf(stderr, "Error: problem locking in rdlock\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 //* Unlock the inode_table[inumber]
 void unlock(int inumber){
     if(pthread_rwlock_unlock(&(inode_table[inumber].lock)) != 0){
-        fprintf(stderr, "Error: problem unlocking rwlock\n");
+        fprintf(stderr, "Error: problem unlocking\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -83,10 +102,9 @@ void inode_table_destroy() {
 int inode_create(type nType) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
-    int lock_error;
 
     for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
-        if((lock_error = pthread_rwlock_trywrlock(&(inode_table[inumber].lock))) == 0){
+        if(try_wrLock(inumber) == 0){
             if (inode_table[inumber].nodeType == T_NONE) {
                 inode_table[inumber].nodeType = nType;
 
@@ -105,12 +123,6 @@ int inode_create(type nType) {
                 return inumber;
             }
             unlock(inumber);
-        }
-        
-        //* If it wasn't able to get the lock because of the wrong reason
-        if(lock_error != EBUSY && lock_error != 0){
-            fprintf(stderr, "Error: problem locking wrlock\n");
-            exit(EXIT_FAILURE);
         }
     }
     return FAIL;

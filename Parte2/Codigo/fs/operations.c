@@ -2,30 +2,91 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
-#define LREAD 0
-#define LWRITE 1
+//* Type of lock
+#define READ 0
+#define WRITE 1
+
+//* Special lock case
+#define NA 0
+#define MOVE 1
 
 //* Save the entries of the inode_table that have been locked
 typedef struct locks_to_unlock{
-	int array[INODE_TABLE_SIZE];
-	int size;
+	int rdArray[INODE_TABLE_SIZE];
+	int rdSize;
+	int wrArray[INODE_TABLE_SIZE];
+	int wrSize;
 } locks_to_unlock;
 
-void writeLock(locks_to_unlock *ltu, int inumber){
-	wrLock(inumber);
-	ltu->array[(ltu->size)++] = inumber;
+
+/*
+ * Locks the inumber and adds to the ltu
+ * Input:
+ *  - ltu: Struct that has the inumber that are locked
+ *  - inumber
+ * 	- mode: type of lock
+ * 	- command: used for special cases
+ * Returns:
+ *  - inumber: found node's inumber
+ *  - FAIL: if not found
+ */
+void lock_inode(locks_to_unlock *ltu, int inumber, int mode, int command){
+	int i;
+	if(command == MOVE){
+		if(mode == WRITE){
+			for(i = 0; i < ltu->rdSize; i++){
+				if(inumber == ltu->rdArray[i]){
+					unlock(inumber);
+					wrLock(inumber);
+					return;
+				}
+			}
+			for(i = 0; i < ltu->wrSize; i++){
+				if(inumber == ltu->wrArray[i]){
+					return;
+				}
+			}		
+
+		}
+		else if(mode == READ){
+			for(i = 0; i < ltu->rdSize; i++){
+				if(inumber == ltu->rdArray[i]){
+					return;
+				}
+			}
+			for(i = 0; i < ltu->wrSize; i++){
+				if(inumber == ltu->wrArray[i]){
+					return;
+				}
+			}		
+		}
+	}
+
+	if(mode == WRITE){
+		wrLock(inumber);
+		ltu->wrArray[(ltu->wrSize)++] = inumber;
+	
+	}
+	else if(mode == READ){
+		rdLock(inumber);
+		ltu->rdArray[(ltu->rdSize)++] = inumber;
+	}
+
 }
 
-void readLock(locks_to_unlock *ltu, int inumber){
-	rdLock(inumber);
-	ltu->array[(ltu->size)++] = inumber;
-	/*if(ltu->size == INODE_TABLE_SIZE){
-		return FAIL;
+void ltu_unlock(locks_to_unlock *ltu){
+	int i;
+	for(i = 0; i < ltu->rdSize; i++){
+		unlock(ltu->rdArray[i]);
 	}
-	return SUCCESS;
-	*/
+
+	for(i = 0; i < ltu->wrSize; i++){
+		unlock(ltu->wrArray[i]);
+	}
 }
+
 
 
 /* Given a path, fills pointers with strings for the parent path and child
@@ -135,11 +196,14 @@ int lookup_sub_node(char *name, DirEntry *entries) {
  * Lookup for a given path.
  * Input:
  *  - name: path of node
+ * 	- ltu: Struct that has the inumber that are locked
+ * 	- mode: type of lock
+ * 	- command: used for special cases
  * Returns:
  *  inumber: identifier of the i-node, if found
  *     FAIL: otherwise
  */
-int lookup(char *name, locks_to_unlock *ltu, int mode) {
+int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
 	char *saveptr;
 	char full_path[MAX_FILE_NAME];
 	char delim[] = "/";
@@ -155,25 +219,25 @@ int lookup(char *name, locks_to_unlock *ltu, int mode) {
 
 	char *path = strtok_r(full_path, delim, &saveptr);
 
-	if(path == NULL && mode == LWRITE){
-		writeLock(ltu,current_inumber);
+	if(path == NULL && mode == WRITE){
+		lock_inode(ltu, current_inumber, mode, command);
 	}else{
-		readLock(ltu,current_inumber);
+		lock_inode(ltu, current_inumber, mode, command);
 	}
 
 	//* Get ROOT inode data
 	inode_get(current_inumber, &nType, &data);
 
-	/* search for all sub nodes */
+	//* search for all sub nodes 
 	while (path != NULL && (current_inumber = lookup_sub_node(path, data.dirEntries)) != FAIL){
 		path = strtok_r(NULL, delim, &saveptr);
 
 		//* If it's the last node of the search
-		if(path == NULL && mode == LWRITE){
-			writeLock(ltu, current_inumber);
+		if(path == NULL && mode == WRITE){
+			lock_inode(ltu, current_inumber, mode, command);
 		}
 		else{
-			readLock(ltu, current_inumber);
+			lock_inode(ltu, current_inumber, mode, command);
 		}
 		inode_get(current_inumber, &nType, &data);
 	}
@@ -187,20 +251,22 @@ int lookup(char *name, locks_to_unlock *ltu, int mode) {
  * Input:
  *  - name: path of node
  *  - nodeType: type of node
+ * 	- ltu: Struct that has the inumber that are locked
  * Returns: SUCCESS or FAIL
  */
 int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
 
 	int parent_inumber, child_inumber;
 	char *parent_name, *child_name, name_copy[MAX_FILE_NAME];
-	/* use for copy */
+	
+	//* use for copy 
 	type pType;
 	union Data pdata;
 
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
-	parent_inumber = lookup(parent_name, ltu, LWRITE);
+	parent_inumber = lookup(parent_name, ltu, WRITE, NA);
 
 	if (parent_inumber == FAIL) {
 		printf("failed to create %s, invalid parent dir %s\n",
@@ -231,9 +297,8 @@ int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
 		return FAIL;
 	}
 
-	//? Preciso ?
 	//* Lock the created node
-	writeLock(ltu, child_inumber);
+	lock_inode(ltu, child_inumber, WRITE, NA);
 
 	if (dir_add_entry(parent_inumber, child_inumber, child_name) == FAIL) {
 		printf("could not add entry %s in dir %s\n",
@@ -249,6 +314,7 @@ int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
  * Deletes a node given a path.
  * Input:
  *  - name: path of node
+ * 	- ltu: Struct that has the inumber that are locked
  * Returns: SUCCESS or FAIL
  */
 int delete_aux(char *name, locks_to_unlock *ltu){
@@ -262,7 +328,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
-	parent_inumber = lookup(parent_name, ltu, LWRITE);
+	parent_inumber = lookup(parent_name, ltu, WRITE, NA);
 
 	if (parent_inumber == FAIL) {
 		printf("failed to delete %s, invalid parent dir %s\n",
@@ -288,7 +354,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 	}
 
 	//* Lock the node that is going to be deleted
-	writeLock(ltu,child_inumber);
+	lock_inode(ltu, child_inumber, WRITE, NA);
 	inode_get(child_inumber, &cType, &cdata);
 
 	if (cType == T_DIRECTORY && is_dir_empty(cdata.dirEntries) == FAIL) {
@@ -313,6 +379,116 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 	return SUCCESS;
 }
 
+
+/*
+ * Moves a node given a path.
+ * Input:
+ *  - origin: path of node
+ * 	- destiny: path of node
+ * 	- ltu: Struct that has the inumber that are locked
+ * Returns: SUCCESS or FAIL
+ */
+int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
+	//* Use for copy
+	char origin_copy[MAX_FILE_NAME];
+	char destiny_copy[MAX_FILE_NAME];
+	union Data pdata;
+	type pType;
+	//* Origin variables
+	int originParent_inumber, originChild_inumber;
+	char *originParent_name, *originChild_name;
+	//* Destiny variables
+	int destinyParent_inumber; 
+	char *destinyParent_name, *destinyChild_name;
+
+
+	//* Get the names
+	strcpy(origin_copy, origin);
+	split_parent_child_from_path(origin_copy, &originParent_name, &originChild_name);
+
+	strcpy(destiny_copy, destiny);
+	split_parent_child_from_path(destiny_copy, &destinyParent_name, &destinyChild_name);
+
+	
+	originParent_inumber = lookfor(originParent_name);
+	if (originParent_inumber == FAIL) {
+		printf("failed to move %s, invalid parent dir %s\n",
+		        originChild_name, originParent_name);
+		return FAIL;
+	}
+	
+	destinyParent_inumber = lookfor(destinyParent_name);
+	if (destinyParent_inumber == FAIL) {
+		printf("failed to move %s, target dir doesn't exist %s\n",
+		        destinyChild_name, destinyParent_name);
+		return FAIL;
+	}
+	
+
+	//* Defines an order for the locks
+	if(originParent_inumber < destinyParent_inumber){
+		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
+		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
+	}
+	else{
+		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
+		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
+	}
+
+	
+	inode_get(originParent_inumber, &pType, &pdata);
+	if(pType != T_DIRECTORY) {
+		printf("failed to move %s, parent %s is not a dir\n",
+		        originChild_name, originParent_name);
+		return FAIL;
+	}
+
+	originChild_inumber = lookup_sub_node(originChild_name, pdata.dirEntries);	
+	if (originChild_inumber == FAIL) {
+		printf("could not move %s, does not exist in dir %s\n",
+		       originChild_name, originParent_name);
+		return FAIL;
+	}
+	//* Lock the node that is going to be deleted and moved
+	lock_inode(ltu, originChild_inumber, WRITE, MOVE);
+
+	inode_get(destinyParent_inumber, &pType, &pdata);
+	if(pType != T_DIRECTORY) {
+		printf("failed to move %s, %s is not a dir\n",
+		        originChild_name, destinyParent_name);
+		return FAIL;
+	}
+
+	if (lookup_sub_node(destinyChild_name, pdata.dirEntries) != FAIL) {
+		printf("failed to move %s, already exists in dir %s\n",
+		       destinyChild_name, destinyParent_name);
+		return FAIL;
+	}
+
+	if (destinyParent_inumber  == originChild_inumber){
+		printf("failed to move %s, target dir is itself\n",
+		       originChild_name);
+		return FAIL;
+	}
+
+	//* Removes from from thr original dir
+	if (dir_reset_entry(originParent_inumber, originChild_inumber) == FAIL) {
+		printf("failed to remove %s from dir %s\n",
+		       originChild_name, originParent_name);
+		return FAIL;
+	}
+
+	//* Adds to the destiny dir
+	if (dir_add_entry(destinyParent_inumber, originChild_inumber, destinyChild_name) == FAIL) {
+		printf("could not add entry %s in dir %s\n",
+		       destinyChild_name, destinyParent_name);
+		return FAIL;
+	}
+
+	return SUCCESS;
+}
+
+
 /*
  * Prints tecnicofs tree.
  * Input:
@@ -325,39 +501,47 @@ void print_tecnicofs_tree(FILE *fp){
 
 int lookfor(char *name){
 	int exit_state;
-	int i;
 	locks_to_unlock ltu;
-	ltu.size = 0;
+	ltu.rdSize = 0;
+	ltu.wrSize = 0;
 
-	exit_state = lookup(name, &ltu, LREAD);
-	for(i=0 ; i<ltu.size ; i++){
-		unlock(ltu.array[i]);
-	}
+	exit_state = lookup(name, &ltu, READ, NA);
+	ltu_unlock(&ltu);
 	return exit_state;
 }
 	
+
 int create(char *name, type nodeType){
 	int exit_state;
-	int i;
 	locks_to_unlock ltu;
-	ltu.size = 0;
+	ltu.rdSize = 0;
+	ltu.wrSize = 0;
 
 	exit_state = create_aux(name, nodeType, &ltu);
-	for(i=0 ; i<ltu.size ; i++){
-		unlock(ltu.array[i]);
-	}
+	ltu_unlock(&ltu);
 	return exit_state;
 }
 
+
 int delete(char *name){
 	int exit_state;
-	int i;
 	locks_to_unlock ltu;
-	ltu.size = 0;
+	ltu.rdSize = 0;
+	ltu.wrSize = 0;
 
 	exit_state = delete_aux(name, &ltu);
-	for(i=0 ; i<ltu.size ; i++){
-		unlock(ltu.array[i]);
-	}
+	ltu_unlock(&ltu);
+	return exit_state;
+}
+
+
+int move(char *origin, char *destiny){
+	int exit_state = 0;
+	locks_to_unlock ltu;
+	ltu.rdSize = 0;
+	ltu.wrSize = 0;
+
+	exit_state = move_aux(origin, destiny, &ltu);
+	ltu_unlock(&ltu);
 	return exit_state;
 }

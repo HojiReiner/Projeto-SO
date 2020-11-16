@@ -36,7 +36,7 @@ int addPos = 0;
 int rmPos = 0;
 bool done = false;
 
-//* Lock global mutex
+
 void Lock(){
     if(pthread_mutex_lock(&lock) != 0){
         fprintf(stderr, "Error: problem locking mutex\n");
@@ -44,7 +44,7 @@ void Lock(){
     }
 }
 
-//* Unlock global mutex
+
 void Unlock(){
     if(pthread_mutex_unlock(&lock) != 0){
         fprintf(stderr, "Error: problem unlocking mutex\n");
@@ -52,7 +52,7 @@ void Unlock(){
     }
 }
 
-//*
+
 void Wait(pthread_cond_t* cond){
     if(pthread_cond_wait(cond,&lock) != 0){
         fprintf(stderr, "Error: problem in condition waiting\n");
@@ -60,7 +60,7 @@ void Wait(pthread_cond_t* cond){
     }
 }
 
-//*
+
 void Signal(pthread_cond_t* cond){
     if(pthread_cond_signal(cond) != 0){
         fprintf(stderr, "Error: problem in signaling condition\n");
@@ -68,7 +68,7 @@ void Signal(pthread_cond_t* cond){
     }
 }
 
-//*
+
 void Broadcast(pthread_cond_t* cond){
     if(pthread_cond_broadcast(cond) != 0){
         fprintf(stderr, "Error: problem in signaling condition\n");
@@ -154,6 +154,10 @@ void processInput(){
                     break;
                 return;
             
+            case 'm':
+                insertCommand(line);
+                break;
+
             case '#':
                 nCommands--;
                 break;
@@ -176,8 +180,9 @@ void processInput(){
 
 void *applyCommands(){
     const char* command;
-    char token, type;
+    char token;
     char name[MAX_INPUT_SIZE];
+    char type[MAX_INPUT_SIZE];
     int numTokens;
     int searchResult;
     
@@ -196,7 +201,7 @@ void *applyCommands(){
         command = removeCommand();
         nCommands--;
 
-        numTokens = sscanf(command, "%c %s %c", &token, name, &type);
+        numTokens = sscanf(command, "%c %s %s", &token, name, type);
         if (numTokens < 2){
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
@@ -204,10 +209,11 @@ void *applyCommands(){
         //???????????
         Signal(&addCommand);
         Unlock();
+
         
         switch (token){
             case 'c':
-                switch (type){
+                switch (type[0]){
                     case 'f':
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
@@ -234,6 +240,12 @@ void *applyCommands(){
                 printf("Delete: %s\n", name);
                 delete(name);
                 break;
+
+            case 'm':
+                printf("Move: %s to %s\n", name, type);
+                move(name, type);
+                break;
+
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);

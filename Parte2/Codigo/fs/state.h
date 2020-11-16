@@ -16,7 +16,7 @@
 #define SUCCESS 0
 #define FAIL -1
 
-#define DELAY 500000
+#define DELAY 5000000
 
 /*
  * Contains the name of the entry and respective i-number
@@ -45,6 +45,8 @@ typedef struct inode_t {
 } inode_t;
 
 void wrLock(int inumber);
+int trywrlock(int inumber);
+int tryrdlock(int inumber);
 void rdLock(int inumber);
 void unlock(int inumber);
 void insert_delay(int cycles);
