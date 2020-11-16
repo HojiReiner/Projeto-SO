@@ -182,7 +182,7 @@ void *applyCommands(){
     const char* command;
     char token;
     char name[MAX_INPUT_SIZE];
-    char type[MAX_INPUT_SIZE];
+    char target[MAX_INPUT_SIZE];
     int numTokens;
     int searchResult;
     
@@ -201,7 +201,7 @@ void *applyCommands(){
         command = removeCommand();
         nCommands--;
 
-        numTokens = sscanf(command, "%c %s %s", &token, name, type);
+        numTokens = sscanf(command, "%c %s %s", &token, name, target);
         if (numTokens < 2){
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
@@ -213,7 +213,7 @@ void *applyCommands(){
         
         switch (token){
             case 'c':
-                switch (type[0]){
+                switch (target[0]){
                     case 'f':
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
@@ -242,8 +242,8 @@ void *applyCommands(){
                 break;
 
             case 'm':
-                printf("Move: %s to %s\n", name, type);
-                move(name, type);
+                printf("Move: %s to %s\n", name, target);
+                move(name, target);
                 break;
 
             default: { /* error */

@@ -220,9 +220,9 @@ int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
 	char *path = strtok_r(full_path, delim, &saveptr);
 
 	if(path == NULL && mode == WRITE){
-		lock_inode(ltu, current_inumber, mode, command);
+		lock_inode(ltu, current_inumber, WRITE, command);
 	}else{
-		lock_inode(ltu, current_inumber, mode, command);
+		lock_inode(ltu, current_inumber, READ, command);
 	}
 
 	//* Get ROOT inode data
@@ -234,11 +234,12 @@ int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
 
 		//* If it's the last node of the search
 		if(path == NULL && mode == WRITE){
-			lock_inode(ltu, current_inumber, mode, command);
+			lock_inode(ltu, current_inumber, WRITE, command);
 		}
 		else{
-			lock_inode(ltu, current_inumber, mode, command);
+			lock_inode(ltu, current_inumber, READ, command);
 		}
+
 		inode_get(current_inumber, &nType, &data);
 	}
 
@@ -411,18 +412,7 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 
 	
 	originParent_inumber = lookfor(originParent_name);
-	if (originParent_inumber == FAIL) {
-		printf("failed to move %s, invalid parent dir %s\n",
-		        originChild_name, originParent_name);
-		return FAIL;
-	}
-	
 	destinyParent_inumber = lookfor(destinyParent_name);
-	if (destinyParent_inumber == FAIL) {
-		printf("failed to move %s, target dir doesn't exist %s\n",
-		        destinyChild_name, destinyParent_name);
-		return FAIL;
-	}
 	
 
 	//* Defines an order for the locks
@@ -433,6 +423,18 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 	else{
 		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
 		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
+	}
+
+	if (originParent_inumber == FAIL) {
+		printf("failed to move %s, invalid parent dir %s\n",
+		        originChild_name, originParent_name);
+		return FAIL;
+	}
+
+	if (destinyParent_inumber == FAIL) {
+		printf("failed to move %s, target dir doesn't exist %s\n",
+		        destinyChild_name, destinyParent_name);
+		return FAIL;
 	}
 
 	
