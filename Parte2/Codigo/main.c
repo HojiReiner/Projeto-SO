@@ -206,7 +206,6 @@ void *applyCommands(){
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
-        //???????????
         Signal(&addCommand);
         Unlock();
 

@@ -451,6 +451,22 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 		       originChild_name, originParent_name);
 		return FAIL;
 	}
+
+	for(int i = 0; i < ltu->rdSize; i++){
+		if(originChild_inumber == ltu->rdArray[i]){
+			printf("failed to move %s, cannot move to inside of itslef\n",
+		    originChild_name);
+			return FAIL;
+		}
+	}
+	for(int i = 0; i < ltu->wrSize; i++){
+		if(originChild_inumber == ltu->wrArray[i]){
+			printf("failed to move %s, cannot move to inside of itslef\n",
+		    originChild_name);
+			return FAIL;
+		}
+	}	
+
 	//* Lock the node that is going to be deleted and moved
 	lock_inode(ltu, originChild_inumber, WRITE, MOVE);
 
@@ -467,11 +483,6 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 		return FAIL;
 	}
 
-	if (destinyParent_inumber  == originChild_inumber){
-		printf("failed to move %s, target dir is itself\n",
-		       originChild_name);
-		return FAIL;
-	}
 
 	//* Removes from from thr original dir
 	if (dir_reset_entry(originParent_inumber, originChild_inumber) == FAIL) {
