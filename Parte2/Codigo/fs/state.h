@@ -16,7 +16,7 @@
 #define SUCCESS 0
 #define FAIL -1
 
-#define DELAY 0
+#define DELAY 5000000
 
 /*
  * Contains the name of the entry and respective i-number
