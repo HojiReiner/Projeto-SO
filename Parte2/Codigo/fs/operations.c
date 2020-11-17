@@ -14,21 +14,14 @@
 
 //* Save the entries of the inode_table that have been locked
 typedef struct locks_to_unlock{
-	int rdArray[INODE_TABLE_SIZE];
-	int rdSize;
-	int wrArray[INODE_TABLE_SIZE];
-	int wrSize;
+	int lockArray[INODE_TABLE_SIZE];
+	int size;
 } locks_to_unlock;
 
 
 int check(locks_to_unlock *ltu, int inumber){
-	for(int i = 0; i < ltu->rdSize; i++){
-		if(inumber == ltu->rdArray[i]){
-			return SUCCESS;
-		}
-	}
-	for(int i = 0; i < ltu->wrSize; i++){
-		if(inumber == ltu->wrArray[i]){
+	for(int i = 0; i < ltu->size; i++){
+		if(inumber == ltu->lockArray[i]){
 			return SUCCESS;
 		}
 	}
@@ -56,25 +49,20 @@ void lock_inode(locks_to_unlock *ltu, int inumber, int mode, int command){
 
 	if(mode == WRITE){
 		wrLock(inumber);
-		ltu->wrArray[(ltu->wrSize)++] = inumber;
+		ltu->lockArray[(ltu->size)++] = inumber;
 	
 	}
 	else if(mode == READ){
 		rdLock(inumber);
-		ltu->rdArray[(ltu->rdSize)++] = inumber;
+		ltu->lockArray[(ltu->size)++] = inumber;
 	}
 
 }
 
 
 void ltu_unlock(locks_to_unlock *ltu){
-	int i;
-	for(i = 0; i < ltu->rdSize; i++){
-		unlock(ltu->rdArray[i]);
-	}
-
-	for(i = 0; i < ltu->wrSize; i++){
-		unlock(ltu->wrArray[i]);
+	for(int i = 0; i < ltu->size; i++){
+		unlock(ltu->lockArray[i]);
 	}
 }
 
@@ -443,7 +431,6 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 		return FAIL;
 	}
 	
-
 	//* Lock the node that is going to be deleted and moved
 	lock_inode(ltu, originChild_inumber, WRITE, MOVE);
 
@@ -492,8 +479,7 @@ void print_tecnicofs_tree(FILE *fp){
 int lookfor(char *name){
 	int exit_state;
 	locks_to_unlock ltu;
-	ltu.rdSize = 0;
-	ltu.wrSize = 0;
+	ltu.size = 0;
 
 	exit_state = lookup(name, &ltu, READ, NA);
 	ltu_unlock(&ltu);
@@ -504,8 +490,7 @@ int lookfor(char *name){
 int create(char *name, type nodeType){
 	int exit_state;
 	locks_to_unlock ltu;
-	ltu.rdSize = 0;
-	ltu.wrSize = 0;
+	ltu.size = 0;
 
 	exit_state = create_aux(name, nodeType, &ltu);
 	ltu_unlock(&ltu);
@@ -516,8 +501,7 @@ int create(char *name, type nodeType){
 int delete(char *name){
 	int exit_state;
 	locks_to_unlock ltu;
-	ltu.rdSize = 0;
-	ltu.wrSize = 0;
+	ltu.size = 0;
 
 	exit_state = delete_aux(name, &ltu);
 	ltu_unlock(&ltu);
@@ -528,8 +512,7 @@ int delete(char *name){
 int move(char *origin, char *destiny){
 	int exit_state = 0;
 	locks_to_unlock ltu;
-	ltu.rdSize = 0;
-	ltu.wrSize = 0;
+	ltu.size = 0;
 
 	exit_state = move_aux(origin, destiny, &ltu);
 	ltu_unlock(&ltu);
