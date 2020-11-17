@@ -75,6 +75,7 @@ void inode_table_init() {
     }
 }
 
+
 /*
  * Releases the allocated memory for the i-nodes tables.
  */
@@ -90,6 +91,7 @@ void inode_table_destroy() {
         }
     }
 }
+
 
 /*
  * Creates a new i-node in the table with the given information.
@@ -128,6 +130,7 @@ int inode_create(type nType) {
     return FAIL;
 }
 
+
 /*
  * Deletes the i-node.
  * Input:
@@ -150,6 +153,7 @@ int inode_delete(int inumber) {
 
     return SUCCESS;
 }
+
 
 /*
  * Copies the contents of the i-node into the arguments.

@@ -105,8 +105,8 @@ void errorParse(){
 
 void processInput(){
     char line[MAX_INPUT_SIZE];
-    char token, type;
     char name[MAX_INPUT_SIZE];
+    char token, type;
     int numTokens;
 
     //* Start timer

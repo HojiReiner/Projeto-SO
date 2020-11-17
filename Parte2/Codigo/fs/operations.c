@@ -66,6 +66,7 @@ void lock_inode(locks_to_unlock *ltu, int inumber, int mode, int command){
 
 }
 
+
 void ltu_unlock(locks_to_unlock *ltu){
 	int i;
 	for(i = 0; i < ltu->rdSize; i++){
@@ -76,7 +77,6 @@ void ltu_unlock(locks_to_unlock *ltu){
 		unlock(ltu->wrArray[i]);
 	}
 }
-
 
 
 /* Given a path, fills pointers with strings for the parent path and child
