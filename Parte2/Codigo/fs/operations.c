@@ -8,9 +8,6 @@
 #define READ 0
 #define WRITE 1
 
-//* Special lock case
-#define NA 0
-#define MOVE 1
 
 //* Save the entries of the inode_table that have been locked
 typedef struct locks_to_unlock{
@@ -40,12 +37,11 @@ int check(locks_to_unlock *ltu, int inumber){
  *  - inumber: found node's inumber
  *  - FAIL: if not found
  */
-void lock_inode(locks_to_unlock *ltu, int inumber, int mode, int command){
-	if(command == MOVE){
-		if(check(ltu, inumber) != FAIL){
-				return;
-		}
+void lock_inode(locks_to_unlock *ltu, int inumber, int mode){
+	if(check(ltu, inumber) != FAIL){
+			return;
 	}
+	
 
 	if(mode == WRITE){
 		wrLock(inumber);
@@ -181,7 +177,7 @@ int lookup_sub_node(char *name, DirEntry *entries) {
  *  inumber: identifier of the i-node, if found
  *     FAIL: otherwise
  */
-int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
+int lookup(char *name, locks_to_unlock *ltu, int mode) {
 	char *saveptr;
 	char full_path[MAX_FILE_NAME];
 	char delim[] = "/";
@@ -198,9 +194,9 @@ int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
 	char *path = strtok_r(full_path, delim, &saveptr);
 
 	if(path == NULL && mode == WRITE){
-		lock_inode(ltu, current_inumber, WRITE, command);
+		lock_inode(ltu, current_inumber, WRITE);
 	}else{
-		lock_inode(ltu, current_inumber, READ, command);
+		lock_inode(ltu, current_inumber, READ);
 	}
 
 	//* Get ROOT inode data
@@ -212,10 +208,10 @@ int lookup(char *name, locks_to_unlock *ltu, int mode, int command) {
 
 		//* If it's the last node of the search
 		if(path == NULL && mode == WRITE){
-			lock_inode(ltu, current_inumber, WRITE, command);
+			lock_inode(ltu, current_inumber, WRITE);
 		}
 		else{
-			lock_inode(ltu, current_inumber, READ, command);
+			lock_inode(ltu, current_inumber, READ);
 		}
 
 		inode_get(current_inumber, &nType, &data);
@@ -245,7 +241,7 @@ int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
-	parent_inumber = lookup(parent_name, ltu, WRITE, NA);
+	parent_inumber = lookup(parent_name, ltu, WRITE);
 
 	if (parent_inumber == FAIL) {
 		printf("failed to create %s, invalid parent dir %s\n",
@@ -277,7 +273,7 @@ int create_aux(char *name, type nodeType, locks_to_unlock *ltu){
 	}
 
 	//* Lock the created node
-	lock_inode(ltu, child_inumber, WRITE, NA);
+	lock_inode(ltu, child_inumber, WRITE);
 
 	if (dir_add_entry(parent_inumber, child_inumber, child_name) == FAIL) {
 		printf("could not add entry %s in dir %s\n",
@@ -307,7 +303,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
-	parent_inumber = lookup(parent_name, ltu, WRITE, NA);
+	parent_inumber = lookup(parent_name, ltu, WRITE);
 
 	if (parent_inumber == FAIL) {
 		printf("failed to delete %s, invalid parent dir %s\n",
@@ -333,7 +329,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 	}
 
 	//* Lock the node that is going to be deleted
-	lock_inode(ltu, child_inumber, WRITE, NA);
+	lock_inode(ltu, child_inumber, WRITE);
 	inode_get(child_inumber, &cType, &cdata);
 
 	if (cType == T_DIRECTORY && is_dir_empty(cdata.dirEntries) == FAIL) {
@@ -390,12 +386,12 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 
 	//* Defines an order for the locks
 	if(strcmp(originParent_name, destinyParent_name) < 0){
-		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
-		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
+		originParent_inumber = lookup(originParent_name, ltu, WRITE);
+		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE);
 	}
 	else{
-		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE, MOVE);
-		originParent_inumber = lookup(originParent_name, ltu, WRITE, MOVE);
+		destinyParent_inumber = lookup(destinyParent_name, ltu, WRITE);
+		originParent_inumber = lookup(originParent_name, ltu, WRITE);
 	}
 
 	if (originParent_inumber == FAIL) {
@@ -432,7 +428,7 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
 	}
 	
 	//* Lock the node that is going to be deleted and moved
-	lock_inode(ltu, originChild_inumber, WRITE, MOVE);
+	lock_inode(ltu, originChild_inumber, WRITE);
 
 	inode_get(destinyParent_inumber, &pType, &pdata);
 	if(pType != T_DIRECTORY) {
@@ -481,7 +477,7 @@ int lookfor(char *name){
 	locks_to_unlock ltu;
 	ltu.size = 0;
 
-	exit_state = lookup(name, &ltu, READ, NA);
+	exit_state = lookup(name, &ltu, READ);
 	ltu_unlock(&ltu);
 	return exit_state;
 }
