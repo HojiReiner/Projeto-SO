@@ -32,27 +32,19 @@ int check(locks_to_unlock *ltu, int inumber){
  *  - ltu: Struct that has the inumber that are locked
  *  - inumber
  * 	- mode: type of lock
- * 	- command: used for special cases
- * Returns:
- *  - inumber: found node's inumber
- *  - FAIL: if not found
  */
 void lock_inode(locks_to_unlock *ltu, int inumber, int mode){
 	if(check(ltu, inumber) != FAIL){
-			return;
+		return;
 	}
-	
 
 	if(mode == WRITE){
 		wrLock(inumber);
-		ltu->lockArray[(ltu->size)++] = inumber;
-	
 	}
 	else if(mode == READ){
 		rdLock(inumber);
-		ltu->lockArray[(ltu->size)++] = inumber;
 	}
-
+	ltu->lockArray[(ltu->size)++] = inumber;
 }
 
 
@@ -296,7 +288,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 
 	int parent_inumber, child_inumber;
 	char *parent_name, *child_name, name_copy[MAX_FILE_NAME];
-	/* use for copy */
+	//* use for copy 
 	type pType, cType;
 	union Data pdata, cdata;
 
@@ -338,7 +330,7 @@ int delete_aux(char *name, locks_to_unlock *ltu){
 		return FAIL;
 	}
 
-	/* remove entry from folder that contained deleted node */
+	//* remove entry from folder that contained deleted node
 	if (dir_reset_entry(parent_inumber, child_inumber) == FAIL) {
 		printf("failed to delete %s from dir %s\n",
 		       child_name, parent_name);
@@ -506,7 +498,7 @@ int delete(char *name){
 
 
 int move(char *origin, char *destiny){
-	int exit_state = 0;
+	int exit_state;
 	locks_to_unlock ltu;
 	ltu.size = 0;
 

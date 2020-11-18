@@ -254,6 +254,7 @@ void *applyCommands(){
     return NULL;
 }
 
+
 void threadPool(){
     pthread_t tid[numberThreads];
     int i;
