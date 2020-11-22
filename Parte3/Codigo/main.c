@@ -27,6 +27,7 @@ double exectime;
 
 //~ Lock Variables
 pthread_mutex_t lock;
+pthread_rwlock_t print_lock;
 
 //~ Condition Variables
 pthread_cond_t rmCommand;
@@ -76,6 +77,29 @@ void Broadcast(pthread_cond_t* cond){
     }
 }
 
+
+void PrintLock(){
+    if(pthread_rwlock_wrlock(&print_lock) != 0){
+        fprintf(stderr, "Error: problem locking print command\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void NotPrint_Lock(){
+    if(pthread_rwlock_rdlock(&print_lock) != 0){
+        fprintf(stderr, "Error: problem locking othre commands\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void PrintUnlock(){
+    if(pthread_rwlock_unlock(&print_lock) != 0){
+        fprintf(stderr, "Error: problem unlocking NotPrint_Lock/PrintLock\n");
+        exit(EXIT_FAILURE);
+    }
+}
 
 //^ Inserts command on vector inputCommands
 int insertCommand(char* data) {
@@ -155,8 +179,18 @@ void processInput(){
                 return;
             
             case 'm':
-                insertCommand(line);
-                break;
+                if(numTokens != 3)
+                    errorParse();
+                if(insertCommand(line))
+                    break;
+                return;
+
+            case 'p':
+                if(numTokens != 2)
+                    errorParse();
+                if(insertCommand(line))
+                    break;
+                return;
 
             case '#':
                 nCommands--;
@@ -179,6 +213,7 @@ void processInput(){
 }
 
 void *applyCommands(){
+    FILE *outFile;
     const char* command;
     char token;
     char name[MAX_INPUT_SIZE];
@@ -214,12 +249,16 @@ void *applyCommands(){
             case 'c':
                 switch (target[0]){
                     case 'f':
+                        NotPrint_Lock();
                         printf("Create file: %s\n", name);
                         create(name, T_FILE);
+                        PrintUnlock();
                         break;
                     case 'd':
+                        NotPrint_Lock();
                         printf("Create directory: %s\n", name);
                         create(name, T_DIRECTORY);
+                        PrintUnlock();
                         break;
                     default:
                         fprintf(stderr, "Error: invalid node type \n");
@@ -227,6 +266,7 @@ void *applyCommands(){
                 }
                 break;
             case 'l': 
+                NotPrint_Lock();
                 searchResult = lookfor(name);
                 if (searchResult >= 0){
                     printf("Search: %s found\n", name);
@@ -234,15 +274,32 @@ void *applyCommands(){
                 else{
                     printf("Search: %s not found\n", name);
                 }
+                PrintUnlock();
                 break;
             case 'd':
+                NotPrint_Lock();
                 printf("Delete: %s\n", name);
                 delete(name);
+                PrintUnlock();
                 break;
 
             case 'm':
+                NotPrint_Lock();
                 printf("Move: %s to %s\n", name, target);
                 move(name, target);
+                PrintUnlock();
+                break;
+
+            case 'p':
+                PrintLock();
+                printf("Print tree to %s\n", name);
+                if((outFile = fopen(name, "w")) == NULL){
+                    fprintf(stderr, "Error: problem opening %s\n",name);
+                    exit(EXIT_FAILURE);
+                }
+                print_tecnicofs_tree(outFile);
+                fclose(outFile);
+                PrintUnlock();
                 break;
 
             default: { /* error */
@@ -299,6 +356,7 @@ int main(int argc, char* argv[]){
     }
 
     pthread_mutex_init(&lock, NULL);
+    pthread_rwlock_init(&print_lock, NULL);
     pthread_cond_init(&rmCommand, NULL);
     pthread_cond_init(&addCommand, NULL);
 
@@ -310,7 +368,7 @@ int main(int argc, char* argv[]){
 
     //* Open/Create output file
     if((OutputFile = fopen(OutputFile_Name, "w")) == NULL){
-        fprintf(stderr, "Error: file %s doesn't exist\n",OutputFile_Name);
+        fprintf(stderr, "Error: problem opening %s\n",OutputFile_Name);
         exit(EXIT_FAILURE);
     }
     print_tecnicofs_tree(OutputFile);
