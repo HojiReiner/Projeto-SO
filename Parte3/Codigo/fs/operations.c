@@ -460,7 +460,9 @@ int move_aux(char *origin, char *destiny, locks_to_unlock *ltu){
  *  - fp: pointer to output file
  */
 void print_tecnicofs_tree(FILE *fp){
+	wrLock(FS_ROOT);
 	inode_print_tree(fp, FS_ROOT, "");
+	unlock(FS_ROOT);
 }
 
 
