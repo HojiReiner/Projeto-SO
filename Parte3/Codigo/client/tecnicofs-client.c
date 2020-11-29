@@ -98,6 +98,15 @@ void *processInput() {
                 else
                   printf("Unable to move: %s to %s\n", arg1, arg2);
                 break;
+            case 'p':
+                if(numTokens != 2)
+                    errorParse();
+                res = tfsPrint(arg1);
+                if (!res)
+                  printf("Print: to %s\n", arg1);
+                else
+                  printf("Unable to Print: to %s\n", arg1);
+                break;
             case '#':
                 break;
             default: { /* error */
@@ -114,11 +123,7 @@ int main(int argc, char* argv[]) {
 
     if (tfsMount(serverName) == 0)
       printf("Mounted! (socket = %s)\n", serverName);
-    else {
-      fprintf(stderr, "Unable to mount socket: %s\n", serverName);
-      exit(EXIT_FAILURE);
-    }
-
+    
     processInput();
 
     tfsUnmount();

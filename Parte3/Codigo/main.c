@@ -36,7 +36,7 @@ int setAddr(char *path, struct sockaddr_un *addr) {
 
 void *applyCommands(){
     struct sockaddr_un client_addr;
-    socklen_t addrlen = sizeof(struct sockaddr_un);;
+    socklen_t addrlen = sizeof(struct sockaddr_un);
     FILE *outFile; 
     char command[MAX_INPUT_SIZE];
     char name[MAX_INPUT_SIZE];
@@ -44,11 +44,10 @@ void *applyCommands(){
     char token;
     int numTokens;
     int result;
-    int c;
     
     while(1){
-        c = recvfrom(sockfd, command, sizeof(command)-1, 0,(struct sockaddr *)&client_addr, &addrlen);
-        if (c <= 0) continue;
+        result = recvfrom(sockfd, command, sizeof(command)-1, 0,(struct sockaddr *)&client_addr, &addrlen);
+        if (result <= 0) continue;
 
         numTokens = sscanf(command, "%c %s %s", &token, name, target);
         if (numTokens < 2){

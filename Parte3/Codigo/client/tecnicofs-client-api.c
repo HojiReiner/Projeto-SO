@@ -6,7 +6,7 @@
 #include <sys/un.h>
 #include <stdio.h>
 
-#define MAX_INPUT_SIZE 100
+#define MAX_SIZE 100
 
 int sockfd;
 socklen_t server_len;
@@ -44,7 +44,7 @@ int rcv(){
 }
 
 int tfsCreate(char *filename, char nodeType) {
-  char command[MAX_INPUT_SIZE];
+  char command[MAX_SIZE];
   sprintf(command,"c %s %c", filename, nodeType);
   
   snd(command);
@@ -53,7 +53,7 @@ int tfsCreate(char *filename, char nodeType) {
 
 
 int tfsDelete(char *path) {
-  char command[MAX_INPUT_SIZE];
+  char command[MAX_SIZE];
   sprintf(command,"d %s", path);
   
   snd(command);
@@ -62,7 +62,7 @@ int tfsDelete(char *path) {
 
 
 int tfsMove(char *from, char *to) {
-  char command[MAX_INPUT_SIZE];
+  char command[MAX_SIZE];
   sprintf(command,"m %s %s", from, to);
   
   snd(command);
@@ -71,7 +71,7 @@ int tfsMove(char *from, char *to) {
 
 
 int tfsLookup(char *path) {
-  char command[MAX_INPUT_SIZE];
+  char command[MAX_SIZE];
   sprintf(command,"l %s", path);
   
   snd(command);
@@ -80,7 +80,7 @@ int tfsLookup(char *path) {
 
 
 int tfsPrint(char *filename) {
-  char command[MAX_INPUT_SIZE];
+  char command[MAX_SIZE];
   sprintf(command,"p %s", filename);
   
   snd(command);
@@ -96,14 +96,16 @@ int tfsMount(char * sockPath) {
   sprintf(clientName,"/tmp/CLIENT_%d", getpid());
 
   if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0) ) < 0) {
-    return FAIL;
+    fprintf(stderr, "Client: Unable to create socket");
+    exit(EXIT_FAILURE);
   }
   
   unlink(clientName);
   client_len = setAddr(clientName, &client_addr);
 
   if (bind(sockfd, (struct sockaddr *) &client_addr, client_len) < 0) {
-    return FAIL;
+    fprintf(stderr, "Client: Unable to bind socket");
+    exit(EXIT_FAILURE);
   }  
 
   //* Set up server sock
