@@ -28,7 +28,7 @@ int setAddr(char *path, struct sockaddr_un *addr) {
 
 void snd(char * command){
   
-  if (sendto(sockfd, command, strlen(command)+1, 0, (struct sockaddr *) &server_addr, server_len) < 0) {
+  if (sendto(sockfd, command, strlen(command), 0, (struct sockaddr *) &server_addr, server_len) < 0) {
     fprintf(stderr,"Client: sendto error\n");
     exit(EXIT_FAILURE);
   }
@@ -87,7 +87,7 @@ int tfsPrint(char *filename) {
   return rcv();
 }
 
-//!
+
 int tfsMount(char * sockPath) {
   struct sockaddr_un client_addr;
   socklen_t client_len;

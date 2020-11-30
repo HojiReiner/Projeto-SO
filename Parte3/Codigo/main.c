@@ -46,7 +46,7 @@ void *applyCommands(){
     int result;
     
     while(1){
-        result = recvfrom(sockfd, command, sizeof(command)-1, 0,(struct sockaddr *)&client_addr, &addrlen);
+        result = recvfrom(sockfd, command, sizeof(command), 0,(struct sockaddr *)&client_addr, &addrlen);
         if (result <= 0) continue;
 
         numTokens = sscanf(command, "%c %s %s", &token, name, target);
@@ -105,7 +105,7 @@ void *applyCommands(){
                 exit(EXIT_FAILURE);
             }
         }
-        sendto(sockfd, &result, sizeof(int)+1, 0, (struct sockaddr *)&client_addr, addrlen);
+        sendto(sockfd, &result, sizeof(int), 0, (struct sockaddr *)&client_addr, addrlen);
     }
     return NULL;
 }
